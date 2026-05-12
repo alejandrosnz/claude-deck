@@ -60,6 +60,7 @@ jobs:
           # Excludes: src/, node_modules/, dev config files, lock files.
           zip -r "$BUNDLE" "$PLUGIN_DIR" \
             --exclude "$PLUGIN_DIR/src/*" \
+            --exclude "$PLUGIN_DIR/scripts/*" \
             --exclude "$PLUGIN_DIR/node_modules/*" \
             --exclude "$PLUGIN_DIR/package.json" \
             --exclude "$PLUGIN_DIR/package-lock.json" \

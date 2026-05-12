@@ -39,6 +39,57 @@ The plugin is written as a **Node.js plugin** using the standard Stream Deck SDK
 
 ---
 
+## Installation
+
+### Prerequisites
+
+- [OpenDeck](https://github.com/nekename/OpenDeck) installed, **or** the Elgato Stream Deck software (≥ 6.7)
+- Node.js ≥ 20 (required by OpenDeck for Node.js plugins, or bundled by Stream Deck)
+- Claude Code CLI installed and logged in (`claude login`)
+
+### From GitHub Releases (recommended)
+
+1. Go to the [Releases page](../../releases/latest) and download `claude-deck-<version>.streamDeckPlugin`.
+
+2. Install the plugin:
+
+**OpenDeck — via UI (all platforms)**
+
+Open OpenDeck → Settings → **Plugins** tab → click **Add plugin** → select the downloaded `.streamDeckPlugin` file. Restart OpenDeck when prompted.
+
+**OpenDeck — manual install**
+
+The `.streamDeckPlugin` file is a ZIP archive. Unzip it directly into the OpenDeck plugins directory and restart OpenDeck.
+
+*Linux / macOS:*
+```bash
+unzip claude-deck-<version>.streamDeckPlugin -d ~/.config/opendeck/plugins/
+```
+
+*Windows:*
+```powershell
+Expand-Archive claude-deck-<version>.streamDeckPlugin -DestinationPath "$env:APPDATA\opendeck\plugins\"
+```
+
+**Elgato Stream Deck software (Windows / macOS)**
+
+Double-click the `.streamDeckPlugin` file. The Stream Deck software opens automatically and installs it.
+
+3. Drag the **Usage 5h** or **Usage 7d** action from the action list onto any button slot.
+
+### From source
+
+```bash
+git clone https://github.com/your-handle/claude-deck
+cd claude-deck/com.claudedeck.sdPlugin
+npm install
+npm run build
+```
+
+Then install the built plugin directory into your plugins folder using the manual steps above (the `com.claudedeck.sdPlugin` directory is the bundle).
+
+---
+
 ## How it works
 
 ### Data source — Claude Code Usage API
@@ -80,80 +131,12 @@ The plugin reads the appropriate source at startup and whenever a fetch fails wi
 
 ---
 
-## Project structure
-
-```
-claude-deck/
-├── com.claudedeck.sdPlugin/     # Plugin bundle (OpenAction .sdPlugin directory)
-│   ├── assets/
-│   │   ├── manifest.json        # Plugin manifest
-│   │   └── icons/               # Button icons (SVG + PNG)
-│   ├── src/
-│   │   ├── plugin.ts            # Entry point, registers actions
-│   │   ├── actions/
-│   │   │   ├── usage-5h.ts      # 5-hour usage button action
-│   │   │   └── usage-7d.ts      # 7-day usage button action
-│   │   ├── usage-api.ts         # Claude Code OAuth API client
-│   │   ├── credentials.ts       # Cross-platform credential reader
-│   │   └── renderer.ts          # Button image generator (Canvas/SVG)
-│   ├── package.json
-│   ├── rollup.config.mjs
-│   └── tsconfig.json
-├── README.md
-├── AGENTS.md
-└── references/                  # Reference material (delete before release)
-```
-
----
-
-## Installation
-
-### Prerequisites
-
-- [OpenDeck](https://github.com/nekename/OpenDeck) installed, **or** the Elgato Stream Deck software (≥ 6.7)
-- Node.js ≥ 20 (required by OpenDeck for Node.js plugins, or bundled by Stream Deck)
-- Claude Code CLI installed and logged in (`claude login`)
-
-### Install from source
-
-```bash
-git clone https://github.com/your-handle/claude-deck
-cd claude-deck
-npm install
-npm run build
-```
-
-Then install the plugin bundle into your OpenDeck / Stream Deck plugins directory:
-
-**Linux (OpenDeck):**
-```bash
-# Find the config dir via OpenDeck settings → "Open config directory"
-cp -r com.claudedeck.sdPlugin ~/.config/opendeck/plugins/
-```
-
-**Windows (OpenDeck):**
-```powershell
-# Adjust path to match your OpenDeck config dir
-Copy-Item -Recurse com.claudedeck.sdPlugin "$env:APPDATA\opendeck\plugins\"
-```
-
-**Windows / macOS (Stream Deck software):**
-```bash
-# Use the Elgato CLI
-npm install -g @elgato/cli
-streamdeck link com.claudedeck.sdPlugin
-```
-
-After copying, restart OpenDeck / Stream Deck, then drag the **Usage 5h** and **Usage 7d** actions onto any button slot.
-
----
-
 ## Development
 
 ```bash
-npm run dev     # watch mode — rebuilds on file change
-npm run build   # production build
-npm run lint    # ESLint
+npm run dev        # watch mode — rebuilds on file change
+npm run build      # production build
+npm run lint       # ESLint
 npm run typecheck  # tsc --noEmit
 ```
 
@@ -176,6 +159,31 @@ npm run typecheck  # tsc --noEmit
 - [ ] Usage history graph (mini sparkline on button image)
 - [ ] Configurable refresh interval via Property Inspector
 - [ ] Token / cost display variant
+
+---
+
+## Project structure
+
+```
+claude-deck/
+├── com.claudedeck.sdPlugin/     # Plugin bundle (OpenAction .sdPlugin directory)
+│   ├── assets/
+│   │   ├── manifest.json        # Plugin manifest
+│   │   └── icons/               # Button icons (SVG + PNG)
+│   ├── src/
+│   │   ├── plugin.ts            # Entry point, registers actions
+│   │   ├── actions/
+│   │   │   ├── usage-5h.ts      # 5-hour usage button action
+│   │   │   └── usage-7d.ts      # 7-day usage button action
+│   │   ├── usage-api.ts         # Claude Code OAuth API client
+│   │   ├── credentials.ts       # Cross-platform credential reader
+│   │   └── renderer.ts          # Button image generator (Canvas/SVG)
+│   ├── package.json
+│   ├── rollup.config.mjs
+│   └── tsconfig.json
+├── README.md
+└── AGENTS.md
+```
 
 ---
 
