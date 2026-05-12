@@ -1,0 +1,30 @@
+# ── compiled output ───────────────────────────────────────────────────────────
+com.claudedeck.sdPlugin/bin/
+
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+com.claudedeck.sdPlugin/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── TypeScript ────────────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── editors ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── misc ──────────────────────────────────────────────────────────────────────
+*.log
+.env
+.env.*
