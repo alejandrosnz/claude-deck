@@ -1,0 +1,25 @@
+{
+  "name": "claude-deck",
+  "version": "0.1.0",
+  "description": "An OpenDeck / Stream Deck plugin that shows Claude Code usage stats",
+  "private": true,
+  "scripts": {
+    "build": "cd com.claudedeck.sdPlugin && npm run build",
+    "dev": "cd com.claudedeck.sdPlugin && npm run dev",
+    "typecheck": "cd com.claudedeck.sdPlugin && npm run typecheck",
+    "lint": "cd com.claudedeck.sdPlugin && npm run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-handle/claude-deck.git"
+  },
+  "keywords": [
+    "stream-deck",
+    "opendeck",
+    "claude",
+    "usage",
+    "stats"
+  ],
+  "author": "Claude Deck",
+  "license": "MIT"
+}

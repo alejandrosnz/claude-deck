@@ -8,7 +8,7 @@
  */
 
 import streamDeck from '@elgato/streamdeck';
-import { fetchUsage, type UsageData } from './usage-api';
+import { fetchUsage, invalidateCache, type UsageData } from './usage-api';
 import { renderButtonImage, type ButtonRenderState } from './renderer';
 
 const POLL_INTERVAL_MS = 120_000;
@@ -27,6 +27,8 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 export function registerButton(id: string, manifestId: string): void {
   if (!registry.some(b => b.id === id)) {
     registry.push({ id, manifestId });
+    // Show loading state immediately when button appears
+    showLoadingState(id, manifestId);
   }
   if (pollTimer === null) {
     startPolling();
@@ -58,6 +60,7 @@ function stopPolling(): void {
 
 /** Called on manual refresh (key press). */
 export async function manualRefresh(): Promise<void> {
+  invalidateCache();
   await poll();
 }
 
@@ -68,15 +71,32 @@ async function poll(): Promise<void> {
 
 // ── rendering ─────────────────────────────────────────────────────────────────
 
+/** Type guard: check if action has setImage method (KeyAction). */
+function isKeyAction(action: unknown): action is { setImage(url: string): Promise<void> } {
+  return action != null && typeof (action as Record<string, unknown>).setImage === 'function';
+}
+
+function showLoadingState(id: string, manifestId: string): void {
+  try {
+    const action = streamDeck.actions.getActionById(id);
+    if (isKeyAction(action)) {
+      const is5h = manifestId === 'com.claudedeck.usage5h';
+      const label = is5h ? '5h' : '7d';
+      const imageUrl = renderButtonImage({ kind: 'loading' }, label);
+      void action.setImage(imageUrl);
+    }
+  } catch (err) {
+    streamDeck.logger.error(`[claude-deck] showLoadingState failed for ${id}: ${err}`);
+  }
+}
+
 async function updateAllButtons(data: UsageData | null): Promise<void> {
   for (const btn of registry) {
     const imageUrl = computeImage(btn.manifestId, data);
     try {
       const action = streamDeck.actions.getActionById(btn.id);
-      if (action) {
-        // KeyAction.setImage — cast needed because the SDK union type also
-        // includes EncoderAction which uses setFeedback instead.
-        await (action as unknown as { setImage(url: string): Promise<void> }).setImage(imageUrl);
+      if (isKeyAction(action)) {
+        await action.setImage(imageUrl);
       }
     } catch (err) {
       streamDeck.logger.error(`[claude-deck] setImage failed for ${btn.id}: ${err}`);

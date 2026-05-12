@@ -7,8 +7,7 @@
   "Description": "Shows Claude Code usage stats on your Stream Deck / OpenDeck.",
   "CodePath": "bin/plugin.js",
   "Nodejs": {
-    "Version": "20",
-    "Debug": "enabled"
+    "Version": "20"
   },
   "OS": [
     { "Platform": "windows", "MinimumVersion": "10" },

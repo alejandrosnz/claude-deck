@@ -7,7 +7,8 @@
     "build": "rollup -c rollup.config.mjs",
     "dev": "rollup -c rollup.config.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "icons": "node scripts/svg-to-png.mjs"
   },
   "dependencies": {
     "@elgato/streamdeck": "^2.1.0"
@@ -19,6 +20,7 @@
     "@types/node": "^22.0.0",
     "eslint": "^9.0.0",
     "rollup": "^4.0.0",
+    "sharp": "^0.34.5",
     "tslib": "^2.8.0",
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.0.0"
