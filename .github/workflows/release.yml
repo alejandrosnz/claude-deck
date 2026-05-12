@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version tag to release (e.g. v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: com.claudedeck.sdPlugin/package-lock.json
+
+      - name: Install dependencies
+        working-directory: com.claudedeck.sdPlugin
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: com.claudedeck.sdPlugin
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: com.claudedeck.sdPlugin
+        run: npm run build
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Package plugin bundle
+        run: |
+          PLUGIN_DIR="com.claudedeck.sdPlugin"
+          BUNDLE="claude-deck-${{ steps.version.outputs.tag }}.streamDeckPlugin"
+
+          # Collect only the files that belong in the distributable bundle.
+          # Excludes: src/, node_modules/, dev config files, lock files.
+          zip -r "$BUNDLE" "$PLUGIN_DIR" \
+            --exclude "$PLUGIN_DIR/src/*" \
+            --exclude "$PLUGIN_DIR/node_modules/*" \
+            --exclude "$PLUGIN_DIR/package.json" \
+            --exclude "$PLUGIN_DIR/package-lock.json" \
+            --exclude "$PLUGIN_DIR/tsconfig.json" \
+            --exclude "$PLUGIN_DIR/rollup.config.mjs" \
+            --exclude "$PLUGIN_DIR/eslint.config.js"
+
+          echo "BUNDLE=$BUNDLE" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "Claude Deck ${{ steps.version.outputs.tag }}"
+          generate_release_notes: true
+          files: ${{ env.BUNDLE }}
+          fail_on_unmatched_files: true
