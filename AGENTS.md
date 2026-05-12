@@ -307,13 +307,13 @@ There is no automated test suite yet. Until one is added, the smoke-test procedu
 
 ---
 
-## Reference material (in `references/`)
+## Reference material
 
-| Path | What it contains |
+| Resource | What it contains |
 |---|---|
-| `references/OpenDeck-main/` | OpenDeck source — Tauri/Rust backend + SvelteKit frontend. Read `src-tauri/src/plugins/` to understand how plugins are spawned and how WebSocket messages are routed. |
-| `references/AgentDeck-master/` | The closest existing project to what we are building. Read `bridge/src/usage-api.ts` for the usage API implementation, and `plugin/src/actions/iterm-dial.ts` for how usage data drives button rendering. Note: AgentDeck is macOS-only; ignore its Keychain and `security` CLI code when targeting Linux/Windows. |
-| `references/OpenAction API.pdf` | Full OpenAction API reference: manifest format, all clientbound and serverbound WebSocket events, registration protocol. |
+| [OpenDeck](https://github.com/nekename/OpenDeck) | OpenDeck source — Tauri/Rust backend + SvelteKit frontend. Read `src-tauri/src/plugins/` to understand how plugins are spawned and how WebSocket messages are routed. |
+| [AgentDeck](http://github.com/puritysb/AgentDeck) | The closest existing project to what we are building. Read `bridge/src/usage-api.ts` for the usage API implementation, and `plugin/src/actions/iterm-dial.ts` for how usage data drives button rendering. Note: AgentDeck is macOS-only; ignore its Keychain and `security` CLI code when targeting Linux/Windows. |
+| `.agents/doc/openaction-api.md` | Complete OpenAction API specification in Markdown format. Read this for detailed information about: plugin structure, actions/instances/contexts, manifest format, registration process, clientbound/serverbound WebSocket events, settings management, and state handling. |
 
 ---
 
