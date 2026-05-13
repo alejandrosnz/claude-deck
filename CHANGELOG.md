@@ -7,13 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-05-13
+
+### Added
+- **Version bump script**: `scripts/bump-version.mjs` updates `package.json` (root), `com.claudedeck.sdPlugin/package.json`, and `manifest.json` simultaneously (`npm run version:bump -- <version>`)
+- **CI auto-patch manifest**: `release.yml` now resolves the git tag and patches `manifest.json`'s `Version` field before building, ensuring the distributed plugin always shows the correct release version
+- **Local packaging sync**: `scripts/package.mjs` syncs `manifest.json` version from root `package.json` before building
+
+### Changed
+- `release.yml`: moved version resolution before build step to enable manifest patching
+- `AGENTS.md`: added changelog convention for all contributors
+
+---
+
 ## [0.2.0] - 2026-05-13
+
+### Changed
+- **Icon readability**: Redesigned button icons (`usage5h.svg`, `usage7d.svg` and PNG renders) — the icons were too small on the physical Stream Deck display; enlarged and centred the icon elements for better visibility
+- Adjusted manifest paths to match updated icon assets
 
 ### Fixed
 - CI workflow now triggers on pushes to `master` branch (was incorrectly set to `main`)
-
-### Changed
-- Improved code readability across multiple source files
 
 ---
 
@@ -49,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.2.1]: https://github.com/alxbck/claude-deck/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/alxbck/claude-deck/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alxbck/claude-deck/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alxbck/claude-deck/releases/tag/v0.1.0

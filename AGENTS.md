@@ -304,6 +304,7 @@ There is no automated test suite yet. Until one is added, the smoke-test procedu
 - **Button state is always re-renderable.** Store enough state so that `refreshButton()` can be called at any time and produce a correct image from cached data.
 - **Single polling loop.** Even if multiple instances of the same action exist on the profile, there should be only one outbound HTTP request per 120-second window. Use a module-level singleton for the poller.
 - **`references/` is read-only.** Never modify files under `references/`. They exist only to understand the ecosystem and will be deleted before the first release.
+- **Changelog must be updated with every change.** Any PR or commit that modifies functionality, fixes a bug, or adds a feature must include a corresponding entry in `CHANGELOG.md` under the `[Unreleased]` section (or the next release section if one exists).
 
 ---
 
