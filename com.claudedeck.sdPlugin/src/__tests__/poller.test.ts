@@ -37,7 +37,6 @@ import {
   computeImage,
   computeResetImage,
   registerButton,
-  unregisterButton,
   toggleResetInfoForButton,
   _resetPollerStateForTesting,
 } from '../poller';
