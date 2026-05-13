@@ -8,22 +8,24 @@ An OpenDeck / Stream Deck plugin that shows Claude Code usage stats on your cont
 
 ## What it does
 
-### Current actions (v0.2)
+### Current actions (v0.3)
 
 | Action | Controller | Description |
 |---|---|---|
 | **Usage 5h** | Keypad | Shows the rolling 5-hour token usage as a percentage and time-to-reset. Button colour shifts green → amber → red as the limit approaches. |
 | **Usage 7d** | Keypad | Shows the rolling 7-day token usage as a percentage and time-to-reset. Same colour logic. |
+| **Accept** | Keypad | Approves the current Claude Code permission request. Lights up green when a request is waiting. |
+| **Reject** | Keypad | Denies the current Claude Code permission request. Lights up red when a request is waiting. |
 
-Both buttons refresh automatically every 2 minutes and on press (manual refresh).
+Usage 5h and 7d refresh automatically every 2 minutes and on press (manual refresh).
+Accept and Reject become active when Claude Code fires a permission hook; pressing either button resolves it instantly.
 
 ### Planned actions (future milestones)
 
 | Action | Controller | Description |
 |---|---|---|
-| **Accept** | Keypad | Sends the "yes / accept" answer to Claude Code's current permission prompt. |
 | **Change Mode** | Keypad | Cycles between Claude Code modes: `plan` → `build` (auto/accept edits) → default. |
-| **Reject / Stop** | Keypad | Sends Ctrl+C to stop a running session. |
+| **Stop** | Keypad | Sends Ctrl+C to stop a running session. |
 
 ---
 
@@ -76,6 +78,7 @@ Expand-Archive claude-deck-<version>.streamDeckPlugin -DestinationPath "$env:APP
 Double-click the `.streamDeckPlugin` file. The Stream Deck software opens automatically and installs it.
 
 3. Drag the **Usage 5h** or **Usage 7d** action from the action list onto any button slot.
+4. Optionally drag **Accept** and **Reject** onto buttons and follow the [Hook setup](#hook-setup) section below.
 
 ### From source
 
@@ -87,6 +90,54 @@ npm run build
 ```
 
 Then install the built plugin directory into your plugins folder using the manual steps above (the `com.claudedeck.sdPlugin` directory is the bundle).
+
+---
+
+## Hook setup (Accept / Reject buttons)
+
+The Accept and Reject buttons work by intercepting Claude Code's `PermissionRequest` hook — the event that fires just before Claude Code would show you a permission dialog in the terminal.
+
+### How it works
+
+1. The plugin starts a local HTTP server on **port 27632** when it loads.
+2. Claude Code is configured to POST permission requests to that server instead of immediately prompting in the terminal.
+3. The server holds the connection open while the buttons light up on your Stream Deck.
+4. Press **Accept** → the permission is granted; press **Reject** → it is denied.
+5. If you don't press anything within 55 seconds the server auto-denies (safer default).
+
+**Fail-open:** if the plugin is not running (server not listening), the HTTP connection attempt fails immediately. Claude Code treats this as a non-blocking error and continues normally — prompting you in the terminal just as it always did. No functionality is lost when the plugin is off.
+
+### One-time configuration
+
+Add the following to `~/.claude/settings.json` (create the file if it doesn't exist):
+
+```json
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://localhost:27632/hook",
+            "timeout": 65
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+> **Note:** If you already have a `hooks` key in that file, add the `PermissionRequest` entry alongside your existing hooks rather than replacing the whole object.
+
+After saving, start (or restart) a Claude Code session. When Claude Code next needs permission to run a command or edit a file you will see the Accept and Reject buttons light up on your Stream Deck instead of a prompt appearing in the terminal.
+
+### Terminal behaviour with the hook active
+
+- The terminal shows a spinner while waiting for your button press — Claude Code is paused and will not run the tool until you decide.
+- You can still cancel from the terminal by pressing **Ctrl+C**.
+- If you remove or comment out the hook configuration Claude Code returns to its normal terminal-prompt behaviour immediately.
 
 ---
 
@@ -153,9 +204,10 @@ npm run typecheck  # tsc --noEmit
 
 - [x] 5-hour usage widget
 - [x] 7-day usage widget
-- [ ] Accept button (send approval to current permission prompt)
+- [x] Accept button (approve current permission prompt)
+- [x] Reject button (deny current permission prompt)
 - [ ] Change mode button (plan / build / default cycle)
-- [ ] Reject / Stop button (Ctrl+C)
+- [ ] Stop button (Ctrl+C)
 - [ ] Usage history graph (mini sparkline on button image)
 - [ ] Configurable refresh interval via Property Inspector
 - [ ] Token / cost display variant
@@ -171,13 +223,16 @@ claude-deck/
 │   │   ├── manifest.json        # Plugin manifest
 │   │   └── icons/               # Button icons (SVG + PNG)
 │   ├── src/
-│   │   ├── plugin.ts            # Entry point, registers actions
+│   │   ├── plugin.ts            # Entry point, registers actions, starts hook server
 │   │   ├── actions/
 │   │   │   ├── usage-5h.ts      # 5-hour usage button action
-│   │   │   └── usage-7d.ts      # 7-day usage button action
+│   │   │   ├── usage-7d.ts      # 7-day usage button action
+│   │   │   ├── accept.ts        # Accept permission-request button
+│   │   │   └── reject.ts        # Reject permission-request button
+│   │   ├── hook-server.ts       # Local HTTP server receiving PermissionRequest hooks
 │   │   ├── usage-api.ts         # Claude Code OAuth API client
 │   │   ├── credentials.ts       # Cross-platform credential reader
-│   │   └── renderer.ts          # Button image generator (Canvas/SVG)
+│   │   └── renderer.ts          # Button image generator (SVG)
 │   ├── package.json
 │   ├── rollup.config.mjs
 │   └── tsconfig.json

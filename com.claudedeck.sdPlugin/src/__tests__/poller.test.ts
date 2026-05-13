@@ -49,7 +49,7 @@ const subscriptionData: UsageData = {
 describe('computeImage', () => {
   beforeEach(() => {
     vi.mocked(renderButtonImage).mockImplementation(
-      (state: { kind: string }, label: string) => `img:${state.kind}:${label}`,
+      (state: { kind: string }, label?: string) => `img:${state.kind}:${label ?? ''}`,
     );
   });
 

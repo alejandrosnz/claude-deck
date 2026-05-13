@@ -38,6 +38,30 @@
           "ShowTitle": false
         }
       ]
+    },
+    {
+      "UUID": "com.claudedeck.accept",
+      "Name": "Accept",
+      "Icon": "assets/icons/accept",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "assets/icons/accept",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "UUID": "com.claudedeck.reject",
+      "Name": "Reject",
+      "Icon": "assets/icons/reject",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "assets/icons/reject",
+          "ShowTitle": false
+        }
+      ]
     }
   ]
 }
