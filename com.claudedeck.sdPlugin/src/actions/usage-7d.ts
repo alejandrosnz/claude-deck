@@ -3,7 +3,7 @@
  */
 
 import { action, SingletonAction, type WillAppearEvent, type WillDisappearEvent, type KeyDownEvent } from '@elgato/streamdeck';
-import { registerButton, unregisterButton, manualRefresh } from '../poller';
+import { registerButton, unregisterButton, toggleResetInfoForButton } from '../poller';
 
 @action({ UUID: 'com.claudedeck.usage7d' })
 export class Usage7dAction extends SingletonAction {
@@ -15,7 +15,7 @@ export class Usage7dAction extends SingletonAction {
     unregisterButton(ev.action.id);
   }
 
-  override async onKeyDown(_ev: KeyDownEvent): Promise<void> {
-    await manualRefresh();
+  override onKeyDown(ev: KeyDownEvent): void {
+    toggleResetInfoForButton(ev.action.id);
   }
 }

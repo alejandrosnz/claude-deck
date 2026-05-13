@@ -10,6 +10,12 @@
  *   y=56–68 gauge bar            (64×12 px, thick and wide)
  *
  * The reset-time line was removed — 9 px text is illegible on a 12 mm button.
+ *
+ * Reset info layout (shown on key press, 10 s):
+ *   y=14    label "5h" / "7d"   (12 px bold, grey)
+ *   y=28    "resets in"         (10 px grey)
+ *   y=50    remaining "1h 23m"  (22 px bold, white)
+ *   y=64    "14:30" / "Mon 14:30"  (11 px grey)
  */
 
 const W = 72;
@@ -35,6 +41,7 @@ const COLOR_TRACK = '#252525';
 
 export type ButtonRenderState =
   | { kind: 'usage'; percent: number; resetsAt: string | null }
+  | { kind: 'reset'; remaining: string; resetTime: string }
   | { kind: 'loading' }
   | { kind: 'nodata' }
   | { kind: 'error' };
@@ -52,6 +59,9 @@ export function renderButtonImage(state: ButtonRenderState, label: string): stri
   switch (state.kind) {
     case 'usage':
       svg = renderUsage(label, state.percent, state.resetsAt);
+      break;
+    case 'reset':
+      svg = renderResetInfo(label, state.remaining, state.resetTime);
       break;
     case 'loading':
       svg = renderStatus(label, '···', COLOR_GREY);
@@ -99,6 +109,16 @@ function renderNoData(label: string): string {
 </svg>`;
 }
 
+function renderResetInfo(label: string, remaining: string, resetTime: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
+  <text x="${W / 2}" y="14" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
+  <text x="${W / 2}" y="28" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="10" text-anchor="middle">resets in</text>
+  <text x="${W / 2}" y="50" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">${x(remaining)}</text>
+  <text x="${W / 2}" y="64" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="11" text-anchor="middle">${x(resetTime)}</text>
+</svg>`;
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function gaugeColor(percent: number): string {
@@ -121,4 +141,39 @@ function x(s: string): string {
 export function svgToDataUrl(svg: string): string {
   const b64 = Buffer.from(svg, 'utf-8').toString('base64');
   return `data:image/svg+xml;base64,${b64}`;
+}
+
+// ── time formatting helpers (exported for testing and poller use) ─────────────
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * Returns a human-readable string for the time remaining until `resetsAt`.
+ * Examples: "< 1m", "45m", "1h 30m", "2d 3h", "now"
+ */
+export function formatRemaining(resetsAt: string): string {
+  const diffMs = new Date(resetsAt).getTime() - Date.now();
+  if (diffMs <= 0) return 'now';
+  const totalMin = Math.floor(diffMs / 60_000);
+  if (totalMin < 1) return '< 1m';
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+  if (hours < 1) return `${mins}m`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  if (days < 1) return `${hours}h ${mins}m`;
+  return `${days}d ${remHours}h`;
+}
+
+/**
+ * Returns the local reset time formatted for display on the button.
+ * - 5h: "HH:MM" (time only)
+ * - 7d: "DDD HH:MM" (short day name + time)
+ */
+export function formatResetTime(resetsAt: string, is5h: boolean): string {
+  const d = new Date(resetsAt);
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  if (is5h) return `${hh}:${mm}`;
+  return `${DAY_NAMES[d.getDay()]} ${hh}:${mm}`;
 }

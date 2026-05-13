@@ -10,18 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Reset-time overlay on key press**: pressing a Usage 5h or Usage 7d button now toggles a 10-second overlay showing:
+  - "resets in X" — remaining time (e.g. "1h 23m", "45m")
+  - Local reset time — time only for 5h (e.g. "14:30"), day + time for 7d (e.g. "Mon 14:30")
+  - Pressing the button a second time reverts immediately; overlay also auto-reverts after 10 s
+- `formatRemaining(resetsAt)` and `formatResetTime(resetsAt, is5h)` exported from `renderer.ts` for time formatting and testability
+- `computeResetImage()` and `toggleResetInfoForButton()` exported from `poller.ts`
+- `_resetPollerStateForTesting()` internal helper in `poller.ts` for unit test isolation
+- New `'reset'` state kind added to `ButtonRenderState` discriminated union
+- Extended test suite: new tests for reset state rendering, `formatRemaining`, `formatResetTime`, `computeResetImage`, and `toggleResetInfoForButton` (including timer-based auto-revert)
+
+### Changed
 - **Unit test suite** (Vitest): 96 tests across 4 test files covering `renderer.ts`, `credentials.ts`, `usage-api.ts`, and `poller.ts`
   - `renderer.test.ts`: SVG generation, colour thresholds, percent clamping, gauge bar, XML escaping, all state kinds
   - `credentials.ts`: `parseCredentialsJson` edge cases, file-based reading, macOS Keychain path and fallback
   - `usage-api.test.ts`: `parseUtilization` / `parseResetsAt` field-name resilience, fetch normalisation, caching TTL, deduplication, error handling
   - `poller.test.ts`: `computeImage` routing logic for all billing type / data availability combinations
-- `npm test` script (`vitest run`) and `npm run test:watch` added to `com.claudedeck.sdPlugin/package.json`
-- `vitest.config.ts` added to `com.claudedeck.sdPlugin/`
-
-### Changed
-- `credentials.ts`: `parseCredentialsJson` is now exported (no behaviour change; exposed for direct unit testing)
-- `usage-api.ts`: `parseUtilization` and `parseResetsAt` are now exported; added `_resetStateForTesting()` internal helper
-- `poller.ts`: `computeImage` is now exported (no behaviour change; exposed for direct unit testing)
 
 ---
 

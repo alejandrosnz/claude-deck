@@ -5,8 +5,8 @@
  * uses Node.js built-in Buffer.
  */
 
-import { describe, it, expect } from 'vitest';
-import { renderButtonImage, svgToDataUrl, type ButtonRenderState } from '../renderer';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderButtonImage, svgToDataUrl, formatRemaining, formatResetTime, type ButtonRenderState } from '../renderer';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -45,6 +45,7 @@ describe('renderButtonImage — output format', () => {
     { kind: 'nodata' },
     { kind: 'usage', percent: 42, resetsAt: null },
     { kind: 'usage', percent: 42, resetsAt: '2026-05-12T18:00:00Z' },
+    { kind: 'reset', remaining: '1h 30m', resetTime: '14:30' },
   ];
 
   it('always returns a data URL', () => {
@@ -207,5 +208,112 @@ describe('renderButtonImage — XML escaping in label', () => {
   it("escapes single quotes", () => {
     const svg = decodeSvg(renderButtonImage({ kind: 'nodata' }, "it's"));
     expect(svg).toContain('it&#39;s');
+  });
+});
+
+// ── renderButtonImage — reset state ──────────────────────────────────────────
+
+describe('renderButtonImage — reset state', () => {
+  it('renders the remaining time text', () => {
+    const svg = decodeSvg(renderButtonImage({ kind: 'reset', remaining: '1h 30m', resetTime: '14:30' }, '5h'));
+    expect(svg).toContain('1h 30m');
+  });
+
+  it('renders the reset time text', () => {
+    const svg = decodeSvg(renderButtonImage({ kind: 'reset', remaining: '45m', resetTime: 'Mon 14:30' }, '7d'));
+    expect(svg).toContain('Mon 14:30');
+  });
+
+  it('renders the "resets in" label', () => {
+    const svg = decodeSvg(renderButtonImage({ kind: 'reset', remaining: '2h 5m', resetTime: '09:00' }, '5h'));
+    expect(svg).toContain('resets in');
+  });
+
+  it('includes the button label', () => {
+    expect(decodeSvg(renderButtonImage({ kind: 'reset', remaining: '1h 0m', resetTime: '18:00' }, '5h'))).toContain('5h');
+    expect(decodeSvg(renderButtonImage({ kind: 'reset', remaining: '1d 2h', resetTime: 'Fri 00:00' }, '7d'))).toContain('7d');
+  });
+
+  it('uses white colour for remaining time', () => {
+    const svg = decodeSvg(renderButtonImage({ kind: 'reset', remaining: '1h 0m', resetTime: '18:00' }, '5h'));
+    expect(svg).toContain('#ffffff');
+  });
+
+  it('XML-escapes remaining and resetTime strings', () => {
+    const svg = decodeSvg(renderButtonImage({ kind: 'reset', remaining: '< 1m', resetTime: 'a&b' }, '5h'));
+    expect(svg).toContain('&lt; 1m');
+    expect(svg).toContain('a&amp;b');
+  });
+});
+
+// ── formatRemaining ───────────────────────────────────────────────────────────
+
+describe('formatRemaining', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // Fix "now" to 2026-05-12T10:00:00Z
+    vi.setSystemTime(new Date('2026-05-12T10:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns "now" when resetsAt is in the past', () => {
+    expect(formatRemaining('2026-05-12T09:00:00Z')).toBe('now');
+  });
+
+  it('returns "now" when resetsAt equals current time', () => {
+    expect(formatRemaining('2026-05-12T10:00:00Z')).toBe('now');
+  });
+
+  it('returns "< 1m" when less than 1 minute remains', () => {
+    expect(formatRemaining('2026-05-12T10:00:30Z')).toBe('< 1m');
+  });
+
+  it('returns minutes only when less than 1 hour remains', () => {
+    expect(formatRemaining('2026-05-12T10:45:00Z')).toBe('45m');
+  });
+
+  it('returns hours and minutes when less than 1 day remains', () => {
+    expect(formatRemaining('2026-05-12T11:30:00Z')).toBe('1h 30m');
+  });
+
+  it('returns hours and 0 minutes correctly', () => {
+    expect(formatRemaining('2026-05-12T12:00:00Z')).toBe('2h 0m');
+  });
+
+  it('returns days and hours when 1+ days remain', () => {
+    // 2d 2h from 10:00 on 12th = 12:00 on 14th
+    expect(formatRemaining('2026-05-14T12:00:00Z')).toBe('2d 2h');
+  });
+
+  it('returns "1m" for exactly 1 minute remaining', () => {
+    expect(formatRemaining('2026-05-12T10:01:00Z')).toBe('1m');
+  });
+});
+
+// ── formatResetTime ───────────────────────────────────────────────────────────
+
+describe('formatResetTime', () => {
+  it('returns HH:MM format for 5h (is5h = true)', () => {
+    expect(formatResetTime('2026-05-12T14:30:00Z', true)).toMatch(/^\d{2}:\d{2}$/);
+  });
+
+  it('returns DDD HH:MM format for 7d (is5h = false)', () => {
+    expect(formatResetTime('2026-05-12T14:30:00Z', false)).toMatch(/^[A-Z][a-z]{2} \d{2}:\d{2}$/);
+  });
+
+  it('uses a recognised day abbreviation for 7d', () => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const result = formatResetTime('2026-05-18T00:00:00Z', false);
+    const dayPart = result.split(' ')[0];
+    expect(days).toContain(dayPart);
+  });
+
+  it('pads single-digit hours with a leading zero for 5h', () => {
+    // Pick a UTC time that in any timezone west of UTC+10 still has hour < 10 locally.
+    // We just check the pattern — exact values are timezone-dependent.
+    expect(formatResetTime('2026-05-12T03:05:00Z', true)).toMatch(/^\d{2}:\d{2}$/);
   });
 });
