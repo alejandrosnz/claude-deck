@@ -286,7 +286,31 @@ Output: `com.claudedeck.sdPlugin/bin/plugin.js`
 
 ## Testing
 
-There is no automated test suite yet. Until one is added, the smoke-test procedure is:
+### Unit tests
+
+The project uses **Vitest** for unit testing. Tests live in `com.claudedeck.sdPlugin/src/__tests__/`.
+
+Run them inside `com.claudedeck.sdPlugin/`:
+
+```bash
+npm test          # vitest run (single pass)
+npm run test:watch  # watch mode
+```
+
+Current test coverage (~96 tests):
+
+| Test file | Coverage |
+|---|---|
+| `renderer.test.ts` | SVG generation, colour thresholds, percent clamping, gauge bar, XML escaping, all 4 state kinds |
+| `credentials.test.ts` | `parseCredentialsJson` edge cases, file-based reading fallback chain, macOS Keychain path |
+| `usage-api.test.ts` | `parseUtilization` / `parseResetsAt` field-name resilience, fetch normalisation, caching TTL, in-flight dedup, all HTTP error codes |
+| `poller.test.ts` | `computeImage` routing for billing type / data availability combos, label derivation |
+
+**Always run `npm test` after making changes** to verify nothing is broken. The GitHub CI workflow also runs tests on every push/PR.
+
+### Smoke-test procedure
+
+Before releasing, manually verify on hardware:
 
 1. `npm run build` — must exit 0.
 2. `npm run typecheck` — must exit 0.
