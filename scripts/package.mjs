@@ -10,8 +10,7 @@
  */
 
 import { execSync } from "child_process";
-import { existsSync, rmSync, mkdirSync, cpSync, renameSync } from "fs";
-import { createReadStream } from "fs";
+import { existsSync, rmSync, mkdirSync, cpSync, renameSync, writeFileSync } from "fs";
 import { join, resolve } from "path";
 import { platform } from "os";
 import { readFileSync } from "fs";
@@ -38,17 +37,28 @@ const EXCLUDES = [
   "eslint.config.js",
 ];
 
-// ── 1. Build ─────────────────────────────────────────────────────────────────
+// ── 1. Sync manifest.json version ────────────────────────────────────────────
+const manifestPath = join(ROOT, PLUGIN_DIR, "manifest.json");
+const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+if (manifest.Version !== version) {
+  manifest.Version = version;
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+  console.log(`Updated manifest.json Version to ${version}`);
+} else {
+  console.log(`manifest.json Version already at ${version}`);
+}
+
+// ── 2. Build ─────────────────────────────────────────────────────────────────
 console.log("Building plugin…");
 execSync("npm run build", { cwd: join(ROOT, PLUGIN_DIR), stdio: "inherit" });
 
-// ── 2. Remove old bundle ─────────────────────────────────────────────────────
+// ── 3. Remove old bundle ─────────────────────────────────────────────────────
 if (existsSync(BUNDLE_PATH)) {
   rmSync(BUNDLE_PATH);
   console.log(`Removed old ${BUNDLE}`);
 }
 
-// ── 3. Package ───────────────────────────────────────────────────────────────
+// ── 4. Package ───────────────────────────────────────────────────────────────
 console.log(`Packaging → ${BUNDLE}`);
 
 if (platform() === "win32") {
