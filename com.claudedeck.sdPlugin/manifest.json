@@ -4,11 +4,10 @@
   "Author": "Claude Deck",
   "Version": "0.1.0",
   "SDKVersion": 2,
+  "Icon": "assets/icons/usage5h",
+  "Category": "Claude Deck",
   "Description": "Shows Claude Code usage stats on your Stream Deck / OpenDeck.",
   "CodePath": "bin/plugin.js",
-  "Nodejs": {
-    "Version": "20"
-  },
   "OS": [
     { "Platform": "windows", "MinimumVersion": "10" },
     { "Platform": "linux" },

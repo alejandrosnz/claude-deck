@@ -7,7 +7,8 @@
     "build": "cd com.claudedeck.sdPlugin && npm run build",
     "dev": "cd com.claudedeck.sdPlugin && npm run dev",
     "typecheck": "cd com.claudedeck.sdPlugin && npm run typecheck",
-    "lint": "cd com.claudedeck.sdPlugin && npm run lint"
+    "lint": "cd com.claudedeck.sdPlugin && npm run lint",
+    "package": "node scripts/package.mjs"
   },
   "repository": {
     "type": "git",
