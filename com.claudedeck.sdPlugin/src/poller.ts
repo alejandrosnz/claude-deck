@@ -104,7 +104,7 @@ async function updateAllButtons(data: UsageData | null): Promise<void> {
   }
 }
 
-function computeImage(manifestId: string, data: UsageData | null): string {
+export function computeImage(manifestId: string, data: UsageData | null): string {
   const is5h = manifestId === 'com.claudedeck.usage5h';
   const label = is5h ? '5h' : '7d';
 

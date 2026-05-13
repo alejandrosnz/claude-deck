@@ -85,7 +85,7 @@ function readFromFile(): OAuthCredentials | null {
   return null;
 }
 
-function parseCredentialsJson(raw: string): OAuthCredentials | null {
+export function parseCredentialsJson(raw: string): OAuthCredentials | null {
   try {
     const parsed = JSON.parse(raw) as RawCredentialsFile;
     const oauth = parsed?.claudeAiOauth;

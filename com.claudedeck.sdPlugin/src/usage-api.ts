@@ -69,6 +69,14 @@ export function invalidateCache(): void {
   cacheTimestamp = 0;
 }
 
+/** @internal Resets all module-level state. Only for use in tests. */
+export function _resetStateForTesting(): void {
+  cachedData = null;
+  cacheTimestamp = 0;
+  consecutiveFailures = 0;
+  pendingFetch = null;
+}
+
 // ── private helpers ───────────────────────────────────────────────────────────
 
 function getBackoffMs(): number {
@@ -166,7 +174,7 @@ async function doFetch(): Promise<UsageData | null> {
  * Extracts utilization from a rate-limit object.
  * Tolerates: { utilization }, { percentage }, { percent }, { usage }, or bare number.
  */
-function parseUtilization(obj: unknown): number | null {
+export function parseUtilization(obj: unknown): number | null {
   if (obj == null) return null;
   if (typeof obj === 'number') return obj;
   if (typeof obj === 'object') {
@@ -182,7 +190,7 @@ function parseUtilization(obj: unknown): number | null {
  * Extracts the reset timestamp from a rate-limit object.
  * Tolerates: resets_at, resetsAt, reset_at, expires_at.
  */
-function parseResetsAt(obj: unknown): string | null {
+export function parseResetsAt(obj: unknown): string | null {
   if (obj == null || typeof obj !== 'object') return null;
   const o = obj as Record<string, unknown>;
   for (const key of ['resets_at', 'resetsAt', 'reset_at', 'expires_at'] as const) {
