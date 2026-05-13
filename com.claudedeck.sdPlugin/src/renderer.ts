@@ -5,7 +5,7 @@
  * No native binary dependencies — works on any Node.js platform.
  *
  * Visual layout (72×72) — optimised for ~12 mm physical buttons:
- *   y=6–17  label "5h" / "7d"   (12 px bold, grey, letter-spaced)
+ *   y=6–18  label "5h" / "7d"   (14 px bold, grey, letter-spaced)
  *   y=20–52 percent "42%"        (28 px bold, colour-coded) ← hero element
  *   y=56–68 gauge bar            (64×12 px, thick and wide)
  *
@@ -86,7 +86,7 @@ function renderUsage(label: string, percent: number, _resetsAt: string | null): 
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
+  <text x="${W / 2}" y="16" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
   <text x="${W / 2}" y="47" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="28" font-weight="bold" text-anchor="middle">${x(pctText)}</text>
   <rect x="${BAR_X}" y="${BAR_Y}" width="${BAR_W}" height="${BAR_H}" rx="${BAR_RADIUS}" fill="${COLOR_TRACK}"/>
   ${fillW > 0 ? `<rect x="${BAR_X}" y="${BAR_Y}" width="${fillW}" height="${BAR_H}" rx="${BAR_RADIUS}" fill="${color}"/>` : ''}
@@ -96,7 +96,7 @@ function renderUsage(label: string, percent: number, _resetsAt: string | null): 
 function renderStatus(label: string, statusText: string, color: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
+  <text x="${W / 2}" y="16" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
   <text x="${W / 2}" y="45" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="18" text-anchor="middle">${x(statusText)}</text>
 </svg>`;
 }
@@ -104,7 +104,7 @@ function renderStatus(label: string, statusText: string, color: string): string 
 function renderNoData(label: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
+  <text x="${W / 2}" y="16" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
   <text x="${W / 2}" y="45" fill="${COLOR_GREY}" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">&#8211;%</text>
 </svg>`;
 }

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.2.2] - 2026-05-13
+
 ### Added
 - **Reset-time overlay on key press**: pressing a Usage 5h or Usage 7d button now toggles a 10-second overlay showing:
   - "resets in X" — remaining time (e.g. "1h 23m", "45m")
@@ -21,9 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended test suite: new tests for reset state rendering, `formatRemaining`, `formatResetTime`, `computeResetImage`, and `toggleResetInfoForButton` (including timer-based auto-revert)
 
 ### Changed
-- **Unit test suite** (Vitest): 96 tests across 4 test files covering `renderer.ts`, `credentials.ts`, `usage-api.ts`, and `poller.ts`
+- **Button label size**: increased "5h" / "7d" label font size from 12 px to 14 px in the main usage, loading, and no-data button states for improved legibility on small physical buttons
+- **Unit test suite** (Vitest): 133 tests across 4 test files covering `renderer.ts`, `credentials.ts`, `usage-api.ts`, and `poller.ts`
   - `renderer.test.ts`: SVG generation, colour thresholds, percent clamping, gauge bar, XML escaping, all state kinds
-  - `credentials.ts`: `parseCredentialsJson` edge cases, file-based reading, macOS Keychain path and fallback
+  - `credentials.test.ts`: `parseCredentialsJson` edge cases, file-based reading, macOS Keychain path and fallback
   - `usage-api.test.ts`: `parseUtilization` / `parseResetsAt` field-name resilience, fetch normalisation, caching TTL, deduplication, error handling
   - `poller.test.ts`: `computeImage` routing logic for all billing type / data availability combinations
 
@@ -85,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.2.2]: https://github.com/alxbck/claude-deck/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/alxbck/claude-deck/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/alxbck/claude-deck/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alxbck/claude-deck/compare/v0.1.0...v0.1.1

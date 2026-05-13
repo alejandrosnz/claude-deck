@@ -1,6 +1,6 @@
 {
   "name": "claude-deck",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "description": "An OpenDeck / Stream Deck plugin that shows Claude Code usage stats",
   "private": true,
   "scripts": {
