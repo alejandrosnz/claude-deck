@@ -31,13 +31,27 @@ const COLOR_BG = '#111111';      // darker → more contrast
 const COLOR_LABEL = '#888888';
 const COLOR_TRACK = '#252525';
 
+// Accept / Reject button colours
+const COLOR_ACCEPT_BG   = '#0d2e0d';  // dark green tint when active
+const COLOR_ACCEPT      = '#2ecc40';  // bright green
+const COLOR_REJECT_BG   = '#2e0d0d';  // dark red tint when active
+const COLOR_REJECT      = '#ff4136';  // bright red
+
 // ── public types ──────────────────────────────────────────────────────────────
 
 export type ButtonRenderState =
   | { kind: 'usage'; percent: number; resetsAt: string | null }
   | { kind: 'loading' }
   | { kind: 'nodata' }
-  | { kind: 'error' };
+  | { kind: 'error' }
+  /**
+   * Accept / Reject states for the PermissionRequest hook buttons.
+   * `active` = there is a pending permission request waiting for a decision.
+   * `toolName` = the tool that triggered the request (shown when active).
+   * `subtext` = truncated command / file path (shown when active).
+   */
+  | { kind: 'accept'; active: boolean; toolName?: string; subtext?: string }
+  | { kind: 'reject'; active: boolean; toolName?: string; subtext?: string };
 
 // ── public API ────────────────────────────────────────────────────────────────
 
@@ -47,7 +61,7 @@ export type ButtonRenderState =
  * @param state  What to display
  * @param label  Short label shown at the top ("5h" or "7d")
  */
-export function renderButtonImage(state: ButtonRenderState, label: string): string {
+export function renderButtonImage(state: ButtonRenderState, label = ''): string {
   let svg: string;
   switch (state.kind) {
     case 'usage':
@@ -61,6 +75,12 @@ export function renderButtonImage(state: ButtonRenderState, label: string): stri
       break;
     case 'error':
       svg = renderStatus(label, 'err', COLOR_RED);
+      break;
+    case 'accept':
+      svg = renderAccept(state.active, state.toolName, state.subtext);
+      break;
+    case 'reject':
+      svg = renderReject(state.active, state.toolName, state.subtext);
       break;
   }
   return svgToDataUrl(svg);
@@ -96,6 +116,51 @@ function renderNoData(label: string): string {
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
   <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
   <text x="${W / 2}" y="45" fill="${COLOR_GREY}" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">&#8211;%</text>
+</svg>`;
+}
+
+// ── Accept / Reject SVG generators ───────────────────────────────────────────
+
+/**
+ * Accept button (72×72):
+ *   y=14  "ACCEPT" label
+ *   y≈22–56  checkmark path
+ *   y=68  tool name / subtext (only when active)
+ */
+function renderAccept(active: boolean, toolName?: string, subtext?: string): string {
+  const bg          = active ? COLOR_ACCEPT_BG : COLOR_BG;
+  const strokeColor = active ? COLOR_ACCEPT    : COLOR_GREY;
+  const labelColor  = active ? COLOR_ACCEPT    : COLOR_LABEL;
+  const sw          = active ? 5 : 3;
+  const hint        = active ? (subtext ?? toolName) : undefined;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="${bg}"/>
+  <text x="${W / 2}" y="14" fill="${labelColor}" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="bold" text-anchor="middle" letter-spacing="2">ACCEPT</text>
+  <path d="M 12 42 L 28 57 L 60 22" fill="none" stroke="${strokeColor}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+  ${hint ? `<text x="${W / 2}" y="68" fill="${COLOR_LABEL}" font-family="monospace,Courier,sans-serif" font-size="9" text-anchor="middle">${x(hint)}</text>` : ''}
+</svg>`;
+}
+
+/**
+ * Reject button (72×72):
+ *   y=14  "REJECT" label
+ *   y≈22–58  × path
+ *   y=68  tool name / subtext (only when active)
+ */
+function renderReject(active: boolean, toolName?: string, subtext?: string): string {
+  const bg          = active ? COLOR_REJECT_BG : COLOR_BG;
+  const strokeColor = active ? COLOR_REJECT    : COLOR_GREY;
+  const labelColor  = active ? COLOR_REJECT    : COLOR_LABEL;
+  const sw          = active ? 5 : 3;
+  const hint        = active ? (subtext ?? toolName) : undefined;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="${bg}"/>
+  <text x="${W / 2}" y="14" fill="${labelColor}" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="bold" text-anchor="middle" letter-spacing="2">REJECT</text>
+  <path d="M 16 22 L 56 58" fill="none" stroke="${strokeColor}" stroke-width="${sw}" stroke-linecap="round"/>
+  <path d="M 56 22 L 16 58" fill="none" stroke="${strokeColor}" stroke-width="${sw}" stroke-linecap="round"/>
+  ${hint ? `<text x="${W / 2}" y="68" fill="${COLOR_LABEL}" font-family="monospace,Courier,sans-serif" font-size="9" text-anchor="middle">${x(hint)}</text>` : ''}
 </svg>`;
 }
 

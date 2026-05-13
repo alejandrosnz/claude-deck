@@ -8,7 +8,7 @@ import path from 'path';
 const sharp = await import('sharp');
 
 const iconDir = './assets/icons';
-const icons = ['usage5h', 'usage7d'];
+const icons = ['usage5h', 'usage7d', 'accept', 'reject'];
 
 for (const icon of icons) {
   const svgPath = path.join(iconDir, `${icon}.svg`);
