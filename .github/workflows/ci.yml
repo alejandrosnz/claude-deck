@@ -34,6 +34,10 @@ jobs:
         working-directory: com.claudedeck.sdPlugin
         run: npm run lint
 
+      - name: Test
+        working-directory: com.claudedeck.sdPlugin
+        run: npm test
+
       - name: Build
         working-directory: com.claudedeck.sdPlugin
         run: npm run build
