@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `credentials.test.ts`: `parseCredentialsJson` edge cases, file-based reading, macOS Keychain path and fallback
   - `usage-api.test.ts`: `parseUtilization` / `parseResetsAt` field-name resilience, fetch normalisation, caching TTL, deduplication, error handling
   - `poller.test.ts`: `computeImage` routing logic for all billing type / data availability combinations
+- **CI: beta artifact on PRs** — the `CI` workflow now builds and uploads an installable `.streamDeckPlugin` bundle for every pull request. The bundle is versioned as `X.Y.Z-betaNNN` (where `NNN` is the PR number), patch is applied to `manifest.json` before building, and the artifact is retained for 14 days. It appears in the PR "Checks" tab and can be downloaded and installed directly for manual testing.
 
 ---
 

@@ -38,6 +38,53 @@ jobs:
         working-directory: com.claudedeck.sdPlugin
         run: npm test
 
+      # Only on PRs: patch manifest.json with a beta version (e.g. 0.2.2-beta42)
+      # so the downloaded artifact is clearly identifiable.
+      - name: Patch beta version in manifest
+        if: github.event_name == 'pull_request'
+        id: beta
+        run: |
+          BASE=$(node -p "require('./com.claudedeck.sdPlugin/manifest.json').Version")
+          BETA="${BASE}-beta${{ github.event.pull_request.number }}"
+          BETA_VERSION="$BETA" node -e "
+            const fs = require('fs');
+            const p = './com.claudedeck.sdPlugin/manifest.json';
+            const m = JSON.parse(fs.readFileSync(p, 'utf8'));
+            m.Version = process.env.BETA_VERSION;
+            fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
+          "
+          echo "version=${BETA}" >> "$GITHUB_OUTPUT"
+          echo "manifest.json Version => ${BETA}"
+
       - name: Build
         working-directory: com.claudedeck.sdPlugin
         run: npm run build
+
+      # Package and upload the installable bundle only for PR builds.
+      # The artifact appears in the PR "Checks" tab → the job summary,
+      # from where it can be downloaded and installed directly.
+      - name: Package beta plugin bundle
+        if: github.event_name == 'pull_request'
+        run: |
+          PLUGIN_DIR="com.claudedeck.sdPlugin"
+          BUNDLE="claude-deck-${{ steps.beta.outputs.version }}.streamDeckPlugin"
+
+          zip -r "$BUNDLE" "$PLUGIN_DIR" \
+            --exclude "$PLUGIN_DIR/src/*" \
+            --exclude "$PLUGIN_DIR/scripts/*" \
+            --exclude "$PLUGIN_DIR/node_modules/*" \
+            --exclude "$PLUGIN_DIR/package.json" \
+            --exclude "$PLUGIN_DIR/package-lock.json" \
+            --exclude "$PLUGIN_DIR/tsconfig.json" \
+            --exclude "$PLUGIN_DIR/rollup.config.mjs" \
+            --exclude "$PLUGIN_DIR/eslint.config.js"
+
+          echo "BUNDLE=$BUNDLE" >> "$GITHUB_ENV"
+
+      - name: Upload beta artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-deck-${{ steps.beta.outputs.version }}
+          path: ${{ env.BUNDLE }}
+          retention-days: 14
