@@ -8,7 +8,7 @@ An OpenDeck / Stream Deck plugin that shows Claude Code usage stats on your cont
 
 ## What it does
 
-### Current actions (v0.1)
+### Current actions (v0.2)
 
 | Action | Controller | Description |
 |---|---|---|
