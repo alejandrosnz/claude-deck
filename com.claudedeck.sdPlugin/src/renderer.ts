@@ -4,32 +4,32 @@
  * Generates SVG strings and encodes them as base64 SVG data URLs.
  * No native binary dependencies — works on any Node.js platform.
  *
- * Visual layout (72×72):
- *   y=14  label  "5h" / "7d"  (11 px, grey)
- *   y=36  percent  "42%"       (22 px, colour-coded)
- *   y=42  gauge bar             (60×8 px)
- *   y=62  reset time            (9 px, grey)
+ * Visual layout (72×72) — optimised for ~12 mm physical buttons:
+ *   y=6–17  label "5h" / "7d"   (12 px bold, grey, letter-spaced)
+ *   y=20–52 percent "42%"        (28 px bold, colour-coded) ← hero element
+ *   y=56–68 gauge bar            (64×12 px, thick and wide)
+ *
+ * The reset-time line was removed — 9 px text is illegible on a 12 mm button.
  */
 
 const W = 72;
 const H = 72;
 
-// Gauge bar geometry
-const BAR_X = 6;
-const BAR_Y = 44;
-const BAR_W = 60;
-const BAR_H = 8;
-const BAR_RADIUS = 4;
+// Gauge bar geometry — thicker and wider than before
+const BAR_X = 4;
+const BAR_Y = 56;
+const BAR_W = 64;
+const BAR_H = 12;
+const BAR_RADIUS = 6;
 
 // Colour thresholds
 const COLOR_GREEN = '#2ecc40';
 const COLOR_AMBER = '#ff851b';
 const COLOR_RED = '#ff4136';
 const COLOR_GREY = '#555555';
-const COLOR_BG = '#1a1a1a';
-const COLOR_LABEL = '#aaaaaa';
-const COLOR_DIM = '#888888';
-const COLOR_TRACK = '#2e2e2e';
+const COLOR_BG = '#111111';      // darker → more contrast
+const COLOR_LABEL = '#888888';
+const COLOR_TRACK = '#252525';
 
 // ── public types ──────────────────────────────────────────────────────────────
 
@@ -68,37 +68,34 @@ export function renderButtonImage(state: ButtonRenderState, label: string): stri
 
 // ── SVG generators ────────────────────────────────────────────────────────────
 
-function renderUsage(label: string, percent: number, resetsAt: string | null): string {
+function renderUsage(label: string, percent: number, _resetsAt: string | null): string {
   const pct = Math.min(100, Math.max(0, percent));
   const color = gaugeColor(pct);
   const fillW = Math.round((pct / 100) * BAR_W);
   const pctText = `${Math.round(pct)}%`;
-  const resetText = formatResetTime(resetsAt);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="bold" text-anchor="middle">${x(label)}</text>
-  <text x="${W / 2}" y="38" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">${x(pctText)}</text>
+  <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
+  <text x="${W / 2}" y="47" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="28" font-weight="bold" text-anchor="middle">${x(pctText)}</text>
   <rect x="${BAR_X}" y="${BAR_Y}" width="${BAR_W}" height="${BAR_H}" rx="${BAR_RADIUS}" fill="${COLOR_TRACK}"/>
   ${fillW > 0 ? `<rect x="${BAR_X}" y="${BAR_Y}" width="${fillW}" height="${BAR_H}" rx="${BAR_RADIUS}" fill="${color}"/>` : ''}
-  ${resetText ? `<text x="${W / 2}" y="62" fill="${COLOR_DIM}" font-family="Arial,Helvetica,sans-serif" font-size="9" text-anchor="middle">&#8635; ${x(resetText)}</text>` : ''}
 </svg>`;
 }
 
 function renderStatus(label: string, statusText: string, color: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="bold" text-anchor="middle">${x(label)}</text>
-  <text x="${W / 2}" y="42" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="13" text-anchor="middle">${x(statusText)}</text>
+  <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
+  <text x="${W / 2}" y="45" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="18" text-anchor="middle">${x(statusText)}</text>
 </svg>`;
 }
 
 function renderNoData(label: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="bold" text-anchor="middle">${x(label)}</text>
-  <text x="${W / 2}" y="38" fill="${COLOR_GREY}" font-family="Arial,Helvetica,sans-serif" font-size="10" text-anchor="middle">no data</text>
-  <text x="${W / 2}" y="52" fill="#444444" font-family="Arial,Helvetica,sans-serif" font-size="8" text-anchor="middle">(API plan?)</text>
+  <text x="${W / 2}" y="15" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
+  <text x="${W / 2}" y="45" fill="${COLOR_GREY}" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">&#8211;%</text>
 </svg>`;
 }
 
@@ -108,20 +105,6 @@ function gaugeColor(percent: number): string {
   if (percent > 90) return COLOR_RED;
   if (percent > 70) return COLOR_AMBER;
   return COLOR_GREEN;
-}
-
-function formatResetTime(resetsAt: string | null): string {
-  if (!resetsAt) return '';
-  try {
-    const ms = new Date(resetsAt).getTime() - Date.now();
-    if (ms <= 0) return 'reset soon';
-    const totalMin = Math.floor(ms / 60_000);
-    const h = Math.floor(totalMin / 60);
-    const m = totalMin % 60;
-    return h > 0 ? `${h}h${String(m).padStart(2, '0')}m` : `${m}m`;
-  } catch {
-    return '';
-  }
 }
 
 /** Escapes XML special characters. */
