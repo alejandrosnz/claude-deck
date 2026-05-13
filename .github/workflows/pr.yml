@@ -1,14 +1,12 @@
-name: CI
+name: PR
 
 on:
   pull_request:
     branches: ["**"]
-  push:
-    branches: [master]
 
 jobs:
   check:
-    name: Typecheck, lint & build
+    name: Typecheck, lint, test & package beta
     runs-on: ubuntu-latest
 
     steps:
@@ -38,16 +36,9 @@ jobs:
         working-directory: com.claudedeck.sdPlugin
         run: npm test
 
-      # Push to master: plain build, no artifact.
-      - name: Build
-        if: github.event_name != 'pull_request'
-        working-directory: com.claudedeck.sdPlugin
-        run: npm run build
-
-      # PRs: patch the root package.json version to X.Y.Z-betaNNN so that
+      # Patch root package.json version to X.Y.Z-betaNNN so that
       # `npm run package` picks it up, syncs manifest.json, builds, and zips.
       - name: Patch beta version
-        if: github.event_name == 'pull_request'
         id: beta
         run: |
           BASE=$(node -p "require('./package.json').version")
@@ -62,11 +53,9 @@ jobs:
           echo "package.json version => ${BETA}"
 
       - name: Package beta bundle
-        if: github.event_name == 'pull_request'
         run: npm run package
 
       - name: Upload beta artifact
-        if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: claude-deck-v${{ steps.beta.outputs.version }}

@@ -1,0 +1,41 @@
+name: Push
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  check:
+    name: Typecheck, lint, test & build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: com.claudedeck.sdPlugin/package-lock.json
+
+      - name: Install dependencies
+        working-directory: com.claudedeck.sdPlugin
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: com.claudedeck.sdPlugin
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: com.claudedeck.sdPlugin
+        run: npm run lint
+
+      - name: Test
+        working-directory: com.claudedeck.sdPlugin
+        run: npm test
+
+      - name: Build
+        working-directory: com.claudedeck.sdPlugin
+        run: npm run build
