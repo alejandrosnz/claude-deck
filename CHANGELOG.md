@@ -12,20 +12,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Accept button** (`com.claudedeck.accept`): new keypad action that approves the pending Claude Code permission request when pressed. Shows a dim checkmark when idle and a bright green checkmark when a request is waiting.
 - **Reject button** (`com.claudedeck.reject`): new keypad action that denies the pending Claude Code permission request. Shows a dim × when idle and a bright red × when a request is waiting.
-- **Hook server** (`src/hook-server.ts`): lightweight HTTP server (default port 27632) that receives Claude Code `PermissionRequest` hooks, holds the connection open until a button is pressed (or a 55-second safety timeout fires), then sends the allow/deny response back to Claude Code.
+- **Hook server** (`src/hook-server.ts`): lightweight HTTP server (default port 27632) that receives Claude Code `PreToolUse` and `PostToolUse` hooks.
+  - `POST /hook` (PreToolUse): responds **immediately** with `permissionDecision: "ask"` so Claude Code shows its native y/n prompt in the terminal *and* the deck buttons light up simultaneously. The request is stored in the pending map.
+  - `POST /hook-post` (PostToolUse): when the user answers in the terminal, Claude Code fires this event; the server removes the matching pending entry and turns the deck buttons back to idle.
   - Uses Claude Code's native `type: "http"` hook — no shell commands or curl required; works identically on Windows, Linux, and macOS.
   - Fail-open: if the plugin is not running the HTTP connection fails and Claude Code continues as normal (non-blocking error per the Claude Code hook spec).
-  - Auto-deny on 55-second timeout (safer default when the user is away from the device).
+  - 55-second safety timeout: pending entries that are never resolved (user absent) are automatically expired, matching Claude Code's 65 s hook timeout window.
+- **PTY bridge** (`src/pty-bridge.ts`): when the user presses Accept or Reject on the deck, this module injects the corresponding keystroke (`y`/`n` + Return) into the running `claude` terminal process so the native prompt is answered.
+  - Linux: uses TIOCSTI ioctl via a Python 3 subprocess (works on kernels < 6.2; falls back to a direct TTY write).
+  - macOS: uses AppleScript `System Events` keystroke injection (requires Accessibility permissions for the terminal app).
+  - Windows: not supported — logs a warning; the user must respond in the terminal.
+- **Pending-request store** (`src/pending-requests.ts`): module-level `Map` keyed by `tool_use_id` with per-entry 55 s auto-expiry timers. `getMostRecent()` returns the last-inserted entry (tie-break by insertion order when timestamps are equal).
 - **Renderer** (`src/renderer.ts`): added `accept` and `reject` `ButtonRenderState` kinds with active/idle visual states.
 - **Icons**: `accept.svg`, `reject.svg` (and rasterised `@1x`/`@2x` PNG variants).
-- **Test coverage**: `hook-server.test.ts` — 12 new tests covering state transitions, HTTP long-polling, response body format, subtext extraction/truncation, malformed JSON, and concurrent-request handling. Total test count: 108.
+- **Test coverage**: `hook-server.test.ts` — 22 tests covering immediate response, `permissionDecision: "ask"` body, state transitions, PTY bridge call assertions, `/hook-post` cleanup, multiple-pending-request ordering, malformed JSON, and routing. Total test count: 118.
 
 ### Changed
+- `hook-server.ts`: replaced `PermissionRequest` long-polling architecture with the correct `PreToolUse` hook + immediate "ask" response + PTY bridge pattern. Exported `PreToolUsePayload` type replaces `PermissionRequestPayload`; `respondToHook()` now fires the PTY bridge instead of resolving a held HTTP promise.
 - `renderer.ts`: `renderButtonImage` `label` parameter is now optional (default `''`); existing call-sites are unaffected.
 - `plugin.ts`: registers `AcceptAction` and `RejectAction`; starts the hook server on startup.
 - `manifest.json`: added `com.claudedeck.accept` and `com.claudedeck.reject` action entries.
 - `scripts/svg-to-png.mjs`: added `accept` and `reject` to the icon list.
-
 
   - `renderer.test.ts`: SVG generation, colour thresholds, percent clamping, gauge bar, XML escaping, all state kinds
   - `credentials.ts`: `parseCredentialsJson` edge cases, file-based reading, macOS Keychain path and fallback
