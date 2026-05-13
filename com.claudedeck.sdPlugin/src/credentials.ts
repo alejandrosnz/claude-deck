@@ -2,13 +2,14 @@
  * Cross-platform credential reader for Claude Code OAuth tokens.
  *
  * - macOS: reads from Keychain via `security` CLI, falls back to file
- * - Linux / Windows: reads from ~/.claude/.credentials.json
+ * - Linux / Windows: reads from candidate file paths (first match wins)
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir, platform } from 'os';
 import { execSync } from 'child_process';
+import streamDeck from '@elgato/streamdeck';
 
 export interface OAuthCredentials {
   accessToken: string;
@@ -24,7 +25,20 @@ interface RawCredentialsFile {
 }
 
 const KEYCHAIN_SERVICE = 'Claude Code-credentials';
-const CREDENTIALS_FILE = join(homedir(), '.claude', '.credentials.json');
+
+/**
+ * Candidate paths checked in order on Linux / Windows.
+ * Claude Code has used different locations across versions.
+ */
+function candidatePaths(): string[] {
+  const home = homedir();
+  return [
+    join(home, '.claude', '.credentials.json'),       // most common
+    join(home, '.claude', 'credentials.json'),         // without leading dot
+    join(home, '.config', 'claude', 'credentials.json'), // XDG config dir
+    join(home, '.config', 'claude', '.credentials.json'),
+  ];
+}
 
 /**
  * Returns OAuth credentials for Claude Code, or null if unavailable.
@@ -52,12 +66,23 @@ function readFromKeychain(): OAuthCredentials | null {
 }
 
 function readFromFile(): OAuthCredentials | null {
-  try {
-    const raw = readFileSync(CREDENTIALS_FILE, 'utf-8');
-    return parseCredentialsJson(raw);
-  } catch {
-    return null;
+  for (const filePath of candidatePaths()) {
+    if (!existsSync(filePath)) continue;
+    try {
+      const raw = readFileSync(filePath, 'utf-8');
+      const creds = parseCredentialsJson(raw);
+      if (creds) {
+        streamDeck.logger.info(`[claude-deck] Credentials loaded from ${filePath}`);
+        return creds;
+      }
+    } catch (err) {
+      streamDeck.logger.warn(`[claude-deck] Failed to read ${filePath}: ${err}`);
+    }
   }
+  streamDeck.logger.warn(
+    `[claude-deck] No credentials file found. Tried: ${candidatePaths().join(', ')}`,
+  );
+  return null;
 }
 
 function parseCredentialsJson(raw: string): OAuthCredentials | null {

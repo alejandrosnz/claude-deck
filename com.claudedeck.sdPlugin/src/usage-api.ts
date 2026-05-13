@@ -83,16 +83,16 @@ async function doFetch(): Promise<UsageData | null> {
     return cachedData;
   }
 
-  // Skip fetch when token is about to expire — Claude Code will refresh it.
+  // Log token expiry as a warning but proceed with the fetch regardless.
+  // The server will return 401/403 if the token is truly invalid; the plugin
+  // has no ability to refresh tokens itself, so bailing out early here only
+  // results in a permanent error state with no data shown.
   if (creds.expiresAt) {
     const ttl = creds.expiresAt - Date.now();
     if (ttl <= 0) {
-      streamDeck.logger.warn('[claude-deck] OAuth token expired');
-      return cachedData;
-    }
-    if (ttl < TOKEN_EXPIRY_MARGIN_MS) {
-      streamDeck.logger.warn(`[claude-deck] OAuth token expires in ${Math.round(ttl / 60_000)}m — skipping fetch`);
-      return cachedData;
+      streamDeck.logger.warn('[claude-deck] OAuth token appears expired — attempting fetch anyway');
+    } else if (ttl < TOKEN_EXPIRY_MARGIN_MS) {
+      streamDeck.logger.warn(`[claude-deck] OAuth token expires in ${Math.round(ttl / 60_000)}m — attempting fetch anyway`);
     }
   }
 
