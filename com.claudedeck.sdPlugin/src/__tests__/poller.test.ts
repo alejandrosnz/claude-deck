@@ -73,14 +73,14 @@ describe('computeImage', () => {
   });
 
   describe('when data is null', () => {
-    it('renders error state for usage5h', () => {
+    it('renders nodata state for usage5h', () => {
       computeImage('com.claudedeck.usage5h', null);
-      expect(renderButtonImage).toHaveBeenCalledWith({ kind: 'error' }, '5h');
+      expect(renderButtonImage).toHaveBeenCalledWith({ kind: 'nodata' }, '5h');
     });
 
-    it('renders error state for usage7d', () => {
+    it('renders nodata state for usage7d', () => {
       computeImage('com.claudedeck.usage7d', null);
-      expect(renderButtonImage).toHaveBeenCalledWith({ kind: 'error' }, '7d');
+      expect(renderButtonImage).toHaveBeenCalledWith({ kind: 'nodata' }, '7d');
     });
   });
 

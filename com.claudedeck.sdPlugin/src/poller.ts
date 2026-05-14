@@ -193,7 +193,7 @@ export function computeImage(manifestId: string, data: UsageData | null): string
   const label = is5h ? '5h' : '7d';
 
   if (!data) {
-    return renderButtonImage({ kind: 'error' }, label);
+    return renderButtonImage({ kind: 'nodata' }, label);
   }
 
   if (data.inferredBillingType === 'api') {
