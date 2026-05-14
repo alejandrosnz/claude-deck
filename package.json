@@ -8,6 +8,7 @@
     "dev": "cd com.claudedeck.sdPlugin && npm run dev",
     "typecheck": "cd com.claudedeck.sdPlugin && npm run typecheck",
     "lint": "cd com.claudedeck.sdPlugin && npm run lint",
+    "test": "cd com.claudedeck.sdPlugin && npm run test",
     "package": "node scripts/package.mjs",
     "version:bump": "node scripts/bump-version.mjs"
   },

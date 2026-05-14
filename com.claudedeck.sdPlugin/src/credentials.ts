@@ -5,7 +5,7 @@
  * - Linux / Windows: reads from candidate file paths (first match wins)
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 import { homedir, platform } from 'os';
 import { execSync } from 'child_process';
@@ -66,8 +66,8 @@ function readFromKeychain(): OAuthCredentials | null {
 }
 
 function readFromFile(): OAuthCredentials | null {
-  for (const filePath of candidatePaths()) {
-    if (!existsSync(filePath)) continue;
+  const paths = candidatePaths();
+  for (const filePath of paths) {
     try {
       const raw = readFileSync(filePath, 'utf-8');
       const creds = parseCredentialsJson(raw);
@@ -75,12 +75,12 @@ function readFromFile(): OAuthCredentials | null {
         logger.info(`[claude-deck] Credentials loaded from ${filePath}`);
         return creds;
       }
-    } catch (err) {
-      logger.warn(`[claude-deck] Failed to read ${filePath}: ${err}`);
+    } catch {
+      // File doesn't exist or is unreadable — try the next candidate path.
     }
   }
   logger.warn(
-    `[claude-deck] No credentials file found. Tried: ${candidatePaths().join(', ')}`,
+    `[claude-deck] No credentials file found. Tried: ${paths.join(', ')}`,
   );
   return null;
 }

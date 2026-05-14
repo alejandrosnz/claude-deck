@@ -9,37 +9,38 @@
  *   y=20–52 percent "42%"        (28 px bold, colour-coded) ← hero element
  *   y=56–68 gauge bar            (64×12 px, thick and wide)
  *
- * The reset-time line was removed — 9 px text is illegible on a 12 mm button.
+ * The reset-time line was removed from the usage view — 9 px text is illegible
+ * on a 12 mm button. Reset time is shown only on key press (reset-info overlay).
  *
- * Reset info layout (shown on key press, 10 s — no heading, full height used):
+ * Reset info layout (shown on key press, 10 s):
  *   y=17    "resets in"         (13 px grey)
- *   y=46    remaining "1h 23m"  (26 px bold, white)  ← hero
- *   y=65    "14:30" / "Mon 14:30"  (14 px grey)
+ *   y=46    remaining "1h 23m"  (24 px bold, white)  ← hero
+ *   y=65    "14:30" / "Mon 14:30"  (15 px grey)
  */
 
 const W = 72;
 const H = 72;
 
-// Gauge bar geometry — thicker and wider than before
+// Gauge bar geometry
 const BAR_X = 4;
 const BAR_Y = 56;
 const BAR_W = 64;
 const BAR_H = 12;
 const BAR_RADIUS = 6;
 
-// Colour thresholds
+// Colour palette
 const COLOR_GREEN = '#2ecc40';
 const COLOR_AMBER = '#ff851b';
 const COLOR_RED = '#ff4136';
 const COLOR_GREY = '#555555';
-const COLOR_BG = '#111111';      // darker → more contrast
+const COLOR_BG = '#111111';
 const COLOR_LABEL = '#888888';
 const COLOR_TRACK = '#252525';
 
 // ── public types ──────────────────────────────────────────────────────────────
 
 export type ButtonRenderState =
-  | { kind: 'usage'; percent: number; resetsAt: string | null }
+  | { kind: 'usage'; percent: number }
   | { kind: 'reset'; remaining: string; resetTime: string }
   | { kind: 'loading' }
   | { kind: 'nodata' }
@@ -57,7 +58,7 @@ export function renderButtonImage(state: ButtonRenderState, label: string): stri
   let svg: string;
   switch (state.kind) {
     case 'usage':
-      svg = renderUsage(label, state.percent, state.resetsAt);
+      svg = renderUsage(label, state.percent);
       break;
     case 'reset':
       svg = renderResetInfo(state.remaining, state.resetTime);
@@ -77,43 +78,60 @@ export function renderButtonImage(state: ButtonRenderState, label: string): stri
 
 // ── SVG generators ────────────────────────────────────────────────────────────
 
-function renderUsage(label: string, percent: number, _resetsAt: string | null): string {
+/**
+ * Wraps SVG body content in the standard 72×72 shell with a dark background
+ * and the short label text ("5h" / "7d") at the top.
+ */
+function svgWrapper(label: string, body: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
+  <text x="${W / 2}" y="16" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="2">${escapeXml(label)}</text>${body}</svg>`;
+}
+
+function renderUsage(label: string, percent: number): string {
   const pct = Math.min(100, Math.max(0, percent));
   const color = gaugeColor(pct);
   const fillW = Math.round((pct / 100) * BAR_W);
+  // Clamp rx so the fill rect doesn't produce a degenerate pill at small widths.
+  const fillRx = Math.min(BAR_RADIUS, Math.floor(fillW / 2));
   const pctText = `${Math.round(pct)}%`;
+  const fillRect = fillW > 0
+    ? `  <rect x="${BAR_X}" y="${BAR_Y}" width="${fillW}" height="${BAR_H}" rx="${fillRx}" fill="${color}"/>\n`
+    : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="16" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
-  <text x="${W / 2}" y="47" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="28" font-weight="bold" text-anchor="middle">${x(pctText)}</text>
+  return svgWrapper(
+    label,
+    `
+  <text x="${W / 2}" y="47" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="28" font-weight="bold" text-anchor="middle">${escapeXml(pctText)}</text>
   <rect x="${BAR_X}" y="${BAR_Y}" width="${BAR_W}" height="${BAR_H}" rx="${BAR_RADIUS}" fill="${COLOR_TRACK}"/>
-  ${fillW > 0 ? `<rect x="${BAR_X}" y="${BAR_Y}" width="${fillW}" height="${BAR_H}" rx="${BAR_RADIUS}" fill="${color}"/>` : ''}
-</svg>`;
+${fillRect}`,
+  );
 }
 
 function renderStatus(label: string, statusText: string, color: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="16" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
-  <text x="${W / 2}" y="45" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="18" text-anchor="middle">${x(statusText)}</text>
-</svg>`;
+  return svgWrapper(
+    label,
+    `
+  <text x="${W / 2}" y="45" fill="${color}" font-family="Arial,Helvetica,sans-serif" font-size="18" text-anchor="middle">${escapeXml(statusText)}</text>
+`,
+  );
 }
 
 function renderNoData(label: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="16" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
+  return svgWrapper(
+    label,
+    `
   <text x="${W / 2}" y="45" fill="${COLOR_GREY}" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">&#8211;%</text>
-</svg>`;
+`,
+  );
 }
 
 function renderResetInfo(remaining: string, resetTime: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
   <text x="${W / 2}" y="17" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="13" text-anchor="middle">resets in</text>
-  <text x="${W / 2}" y="46" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="bold" text-anchor="middle">${x(remaining)}</text>
-  <text x="${W / 2}" y="65" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="bold" text-anchor="middle">${x(resetTime)}</text>
+  <text x="${W / 2}" y="46" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="bold" text-anchor="middle">${escapeXml(remaining)}</text>
+  <text x="${W / 2}" y="65" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="bold" text-anchor="middle">${escapeXml(resetTime)}</text>
 </svg>`;
 }
 
@@ -125,8 +143,8 @@ function gaugeColor(percent: number): string {
   return COLOR_GREEN;
 }
 
-/** Escapes XML special characters. */
-function x(s: string): string {
+/** Escapes XML special characters for safe embedding in SVG text nodes. */
+function escapeXml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -148,10 +166,15 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 /**
  * Returns a human-readable string for the time remaining until `resetsAt`.
  * Examples: "< 1m", "45m", "1h 30m", "2d 3h", "now"
+ *
+ * Note: when ≥ 1 day remains, minutes are intentionally omitted —
+ * "2d 2h" is more legible than "2d 2h 47m" on a 12 mm button.
+ *
+ * Returns "now" for past timestamps or invalid date strings.
  */
 export function formatRemaining(resetsAt: string): string {
   const diffMs = new Date(resetsAt).getTime() - Date.now();
-  if (diffMs <= 0) return 'now';
+  if (isNaN(diffMs) || diffMs <= 0) return 'now';
   const totalMin = Math.floor(diffMs / 60_000);
   if (totalMin < 1) return '< 1m';
   const hours = Math.floor(totalMin / 60);
@@ -167,9 +190,12 @@ export function formatRemaining(resetsAt: string): string {
  * Returns the local reset time formatted for display on the button.
  * - 5h: "HH:MM" (time only)
  * - 7d: "DDD HH:MM" (short day name + time)
+ *
+ * Returns "--:--" for invalid date strings.
  */
 export function formatResetTime(resetsAt: string, is5h: boolean): string {
   const d = new Date(resetsAt);
+  if (isNaN(d.getTime())) return '--:--';
   const hh = d.getHours().toString().padStart(2, '0');
   const mm = d.getMinutes().toString().padStart(2, '0');
   if (is5h) return `${hh}:${mm}`;

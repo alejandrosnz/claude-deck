@@ -7,6 +7,22 @@
  * - Exponential backoff on repeated failures (45 s / 90 s / 180 s / 300 s)
  * - Re-reads credentials on 401/403
  * - Resilient field parsing (handles renamed API fields)
+ *
+ * ── 429 / Retry-After — INTENTIONALLY NOT HONOURED ─────────────────────────
+ * The API returns 429 at every poll until the user opens Claude Code for the
+ * first time after a PC restart (the OAuth token is not "warm" yet). If we
+ * respected the Retry-After header (typically ~1 h), the plugin would show
+ * stale / blank data for a full hour even though usage data becomes available
+ * the moment the user launches Claude Code.
+ *
+ * Instead we treat 429 like any other transient error: increment the failure
+ * counter (triggering the normal 45 s → 90 s → … backoff), log a warning, and
+ * return stale cache. Once the API starts returning 200 the backoff resets and
+ * the display updates within one normal poll cycle.
+ *
+ * DO NOT add Retry-After enforcement here. The cold-start 429 storm is the
+ * expected steady state on a freshly booted machine.
+ * ────────────────────────────────────────────────────────────────────────────
  */
 
 import { logger } from './log';
@@ -93,15 +109,19 @@ async function doFetch(): Promise<UsageData | null> {
   logger.info('[claude-deck] doFetch — reading credentials');
   const creds = await readCredentials();
   if (!creds) {
+    // Credential absence is not a network failure — do not increment
+    // consecutiveFailures. The 120 s poll interval is already an appropriate
+    // retry cadence, and we don't want backoff to delay recovery once
+    // credentials reappear.
     logger.warn('[claude-deck] No OAuth credentials found');
     return cachedData;
   }
   logger.info('[claude-deck] doFetch — credentials ok, firing HTTP request');
 
-  // Log token expiry as a warning but proceed with the fetch regardless.
-  // The server will return 401/403 if the token is truly invalid; the plugin
-  // has no ability to refresh tokens itself, so bailing out early here only
-  // results in a permanent error state with no data shown.
+  try {
+    // Log token expiry as a warning but proceed regardless. The server will
+    // return 401/403 if the token is truly invalid; the plugin cannot refresh
+    // tokens itself, so failing early only produces a permanent error state.
     if (creds.expiresAt) {
       const ttl = creds.expiresAt - Date.now();
       if (ttl <= 0) {
@@ -111,8 +131,7 @@ async function doFetch(): Promise<UsageData | null> {
       }
     }
 
-    try {
-      logger.info('[claude-deck] fetch start');
+    logger.info('[claude-deck] fetch start');
     const res = await fetch(USAGE_API_URL, {
       method: 'GET',
       headers: {
@@ -127,10 +146,8 @@ async function doFetch(): Promise<UsageData | null> {
 
     if (res.status === 429) {
       consecutiveFailures++;
-      const retryAfter = res.headers.get('retry-after');
-      logger.warn(
-        `[claude-deck] Rate limited (429). Retry-After: ${retryAfter ?? 'none'}. Backoff: ${getBackoffMs() / 1_000}s`,
-      );
+      // Retry-After is intentionally ignored — see module-level comment at the top of this file.
+      logger.warn(`[claude-deck] Rate limited (429). Backoff: ${getBackoffMs() / 1_000}s`);
       return cachedData;
     }
 
@@ -153,9 +170,12 @@ async function doFetch(): Promise<UsageData | null> {
     let fiveHourPercent = parseUtilization(body.five_hour);
     let sevenDayPercent = parseUtilization(body.seven_day);
 
-    // API returns 0.0–1.0; normalise to 0–100.
-    if (fiveHourPercent !== null && fiveHourPercent <= 1.0) fiveHourPercent *= 100;
-    if (sevenDayPercent !== null && sevenDayPercent <= 1.0) sevenDayPercent *= 100;
+    // API returns 0.0–1.0 fractions; normalise to 0–100.
+    // Values ≥ 2.0 are assumed to already be in percentage form (e.g. 85 → 85%).
+    // Values < 2.0 are treated as fractions, including slightly-over-limit values
+    // like 1.05 (→ 105%), which the renderer clamps to 100 for display.
+    if (fiveHourPercent !== null && fiveHourPercent < 2.0) fiveHourPercent *= 100;
+    if (sevenDayPercent !== null && sevenDayPercent < 2.0) sevenDayPercent *= 100;
 
     const result: UsageData = {
       fiveHourPercent,
