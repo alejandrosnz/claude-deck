@@ -8,7 +8,7 @@ An OpenDeck / Stream Deck plugin that shows Claude Code usage stats on your cont
 
 ## What it does
 
-### Current actions (v0.2)
+### Current actions
 
 | Action | Controller | Description |
 |---|---|---|
@@ -17,7 +17,7 @@ An OpenDeck / Stream Deck plugin that shows Claude Code usage stats on your cont
 
 Both buttons refresh automatically every 2 minutes and on press (manual refresh).
 
-### Planned actions (future milestones)
+### Planned actions (future versions)
 
 | Action | Controller | Description |
 |---|---|---|
