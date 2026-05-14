@@ -13,7 +13,7 @@
  */
 
 import { logger } from './log';
-import { fetchUsage, invalidateCache, type UsageData } from './usage-api';
+import { fetchUsage, type UsageData } from './usage-api';
 import { renderButtonImage, formatRemaining, formatResetTime, type ButtonRenderState } from './renderer';
 
 const POLL_INTERVAL_MS = 120_000;
