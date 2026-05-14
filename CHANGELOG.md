@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.2] - 2026-05-13
+## [0.2.2] - 2026-05-14
 
 ### Added
 - **Reset-time overlay on key press**: pressing a Usage 5h or Usage 7d button now toggles a 10-second overlay showing:
@@ -23,12 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `_resetPollerStateForTesting()` internal helper in `poller.ts` for unit test isolation
 - New `'reset'` state kind added to `ButtonRenderState` discriminated union
 - Extended test suite: new tests for reset state rendering, `formatRemaining`, `formatResetTime`, `computeResetImage`, and `toggleResetInfoForButton` (including timer-based auto-revert)
+- **CI bundle-format gate** (all three workflows: `push.yml`, `pr.yml`, `release.yml`): after each build, a "Verify bundle format" step checks that `bin/plugin.js` starts with an ESM `import` statement. If a future change reverts the Rollup format to CJS, CI will fail before any artifact is packaged or released.
 
 ### Fixed
 - **Slow startup (usage % not showing for ~2 minutes)**: if the initial poll on plugin start returned no data (credentials not yet available, network not ready), the next attempt was not scheduled until the regular 120 s interval. The plugin now schedules a fast 15 s retry when the first poll returns no data, so usage appears within ~15 s of the credentials/network becoming available.
+- **Beta bundle incorrectly included `package.json`**: `scripts/package.mjs` generated zip `--exclude` patterns with a trailing `/*` for every entry (e.g. `--exclude "plugin/package.json/*"`). The `/*` suffix only matches contents of a directory; it does not match a plain file. As a result, `package.json` (with `"type": "module"`) was silently included in every beta `.streamDeckPlugin` zip on Linux/macOS, triggering a plugin crash on startup. Fixed by checking whether each exclude entry is a file or a directory and applying the correct pattern (`dir/*` vs `file`). The `release.yml` workflow used hard-coded correct patterns and was not affected.
 
 ### Changed
 - **Button label size**: increased "5h" / "7d" label font size from 12 px to 14 px in the main usage, loading, and no-data button states for improved legibility on small physical buttons
+- **Rollup output format**: changed from CommonJS (`format: 'cjs'`) to ES modules (`format: 'esm'`) to align with `package.json`'s `"type": "module"` declaration. This prevents latent crashes if the distributable bundle inadvertently includes `package.json`.
 - **Unit test suite** (Vitest): 133 tests across 4 test files covering `renderer.ts`, `credentials.ts`, `usage-api.ts`, and `poller.ts`
   - `renderer.test.ts`: SVG generation, colour thresholds, percent clamping, gauge bar, XML escaping, all state kinds
   - `credentials.test.ts`: `parseCredentialsJson` edge cases, file-based reading, macOS Keychain path and fallback

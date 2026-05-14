@@ -36,6 +36,25 @@ jobs:
         working-directory: com.claudedeck.sdPlugin
         run: npm test
 
+      - name: Build
+        working-directory: com.claudedeck.sdPlugin
+        run: npm run build
+
+      - name: Verify bundle format
+        run: |
+          # The first line of bin/plugin.js must be an ESM import statement,
+          # not a top-level require() call. A CJS bundle would start with
+          # "var require$$0 = require(...)" and crash Node.js because package.json
+          # declares "type":"module".
+          FIRST=$(head -1 com.claudedeck.sdPlugin/bin/plugin.js)
+          if echo "$FIRST" | grep -q "^import "; then
+            echo "OK: bin/plugin.js starts with ESM import"
+          else
+            echo "FAIL: bin/plugin.js does not start with an ESM import — likely CJS output"
+            echo "First line: $FIRST"
+            exit 1
+          fi
+
       # Patch root package.json version to X.Y.Z-betaNNN so that
       # `npm run package` picks it up, syncs manifest.json, builds, and zips.
       - name: Patch beta version

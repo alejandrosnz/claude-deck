@@ -11,7 +11,7 @@
 
 import { execSync } from "child_process";
 import { existsSync, rmSync, mkdirSync, cpSync, renameSync, writeFileSync } from "fs";
-import { join, resolve } from "path";
+import { join, resolve, extname } from "path";
 import { platform } from "os";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
@@ -91,8 +91,9 @@ if (platform() === "win32") {
   rmSync(TMP, { recursive: true });
 } else {
   // On Linux / macOS: mirror the GitHub Actions step exactly.
-  const excludeArgs = EXCLUDES.map(
-    (e) => `--exclude "${PLUGIN_DIR}/${e}/*"`
+  // For directories use "dir/*" (excludes contents); for files use "file" (exact match).
+  const excludeArgs = EXCLUDES.map((e) =>
+    extname(e) === "" ? `--exclude "${PLUGIN_DIR}/${e}/*"` : `--exclude "${PLUGIN_DIR}/${e}"`
   ).join(" ");
 
   execSync(
