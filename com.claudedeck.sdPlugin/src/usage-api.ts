@@ -5,9 +5,24 @@
  * - In-memory cache with 120 s TTL
  * - Pending-promise mutex (no concurrent in-flight requests)
  * - Exponential backoff on repeated failures (45 s / 90 s / 180 s / 300 s)
- * - Honour server Retry-After header on 429 responses
  * - Re-reads credentials on 401/403
  * - Resilient field parsing (handles renamed API fields)
+ *
+ * ── 429 / Retry-After — INTENTIONALLY NOT HONOURED ─────────────────────────
+ * The API returns 429 at every poll until the user opens Claude Code for the
+ * first time after a PC restart (the OAuth token is not "warm" yet). If we
+ * respected the Retry-After header (typically ~1 h), the plugin would show
+ * stale / blank data for a full hour even though usage data becomes available
+ * the moment the user launches Claude Code.
+ *
+ * Instead we treat 429 like any other transient error: increment the failure
+ * counter (triggering the normal 45 s → 90 s → … backoff), log a warning, and
+ * return stale cache. Once the API starts returning 200 the backoff resets and
+ * the display updates within one normal poll cycle.
+ *
+ * DO NOT add Retry-After enforcement here. The cold-start 429 storm is the
+ * expected steady state on a freshly booted machine.
+ * ────────────────────────────────────────────────────────────────────────────
  */
 
 import { logger } from './log';
@@ -32,11 +47,6 @@ export interface UsageData {
 let cachedData: UsageData | null = null;
 let cacheTimestamp = 0;
 let consecutiveFailures = 0;
-/**
- * Absolute epoch timestamp (ms) before which no new request should be made.
- * Set when the server responds with a Retry-After header on a 429.
- */
-let retryUntilMs = 0;
 /** Pending fetch promise — prevents concurrent requests. */
 let pendingFetch: Promise<UsageData | null> | null = null;
 
@@ -51,14 +61,6 @@ export async function fetchUsage(): Promise<UsageData | null> {
   const age = Date.now() - cacheTimestamp;
   if (cachedData && age < CACHE_TTL_MS) {
     logger.info(`[claude-deck] fetchUsage — cache hit (age=${Math.round(age / 1_000)}s)`);
-    return cachedData;
-  }
-
-  // Honour server-specified Retry-After deadline (takes priority over backoff).
-  if (Date.now() < retryUntilMs) {
-    logger.info(
-      `[claude-deck] fetchUsage — Retry-After wait active (${Math.round((retryUntilMs - Date.now()) / 1_000)}s remaining)`,
-    );
     return cachedData;
   }
 
@@ -86,7 +88,6 @@ export async function fetchUsage(): Promise<UsageData | null> {
 export function invalidateCache(): void {
   cachedData = null;
   cacheTimestamp = 0;
-  retryUntilMs = 0;
 }
 
 /** @internal Resets all module-level state. Only for use in tests. */
@@ -94,7 +95,6 @@ export function _resetStateForTesting(): void {
   cachedData = null;
   cacheTimestamp = 0;
   consecutiveFailures = 0;
-  retryUntilMs = 0;
   pendingFetch = null;
 }
 
@@ -103,18 +103,6 @@ export function _resetStateForTesting(): void {
 function getBackoffMs(): number {
   if (consecutiveFailures <= 0) return 0;
   return BACKOFF_INTERVALS_MS[Math.min(consecutiveFailures - 1, BACKOFF_INTERVALS_MS.length - 1)];
-}
-
-/**
- * Parses an HTTP Retry-After header value and returns the delay in milliseconds.
- * Handles both integer-seconds ("60") and HTTP-date forms.
- */
-function parseRetryAfterMs(header: string): number {
-  const seconds = parseInt(header, 10);
-  if (!isNaN(seconds) && seconds > 0) return seconds * 1_000;
-  const date = new Date(header).getTime();
-  if (!isNaN(date) && date > Date.now()) return date - Date.now();
-  return 0;
 }
 
 async function doFetch(): Promise<UsageData | null> {
@@ -158,24 +146,8 @@ async function doFetch(): Promise<UsageData | null> {
 
     if (res.status === 429) {
       consecutiveFailures++;
-      const retryAfter = res.headers.get('retry-after');
-      if (retryAfter !== null) {
-        const waitMs = parseRetryAfterMs(retryAfter);
-        if (waitMs > 0) {
-          retryUntilMs = Date.now() + waitMs;
-          logger.warn(
-            `[claude-deck] Rate limited (429). Honouring Retry-After: ${Math.round(waitMs / 1_000)}s`,
-          );
-        } else {
-          logger.warn(
-            `[claude-deck] Rate limited (429). Retry-After unparseable: "${retryAfter}". Fallback backoff: ${getBackoffMs() / 1_000}s`,
-          );
-        }
-      } else {
-        logger.warn(
-          `[claude-deck] Rate limited (429). No Retry-After header. Backoff: ${getBackoffMs() / 1_000}s`,
-        );
-      }
+      // Retry-After is intentionally ignored — see module-level comment at the top of this file.
+      logger.warn(`[claude-deck] Rate limited (429). Backoff: ${getBackoffMs() / 1_000}s`);
       return cachedData;
     }
 
@@ -220,7 +192,6 @@ async function doFetch(): Promise<UsageData | null> {
     cachedData = result;
     cacheTimestamp = Date.now();
     consecutiveFailures = 0;
-    retryUntilMs = 0; // clear any Retry-After deadline on success
     return result;
   } catch (err) {
     consecutiveFailures++;

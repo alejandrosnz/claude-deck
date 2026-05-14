@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- **429 Retry-After honoured** (`usage-api.ts`): the plugin now parses the `Retry-After` header (integer seconds or HTTP-date) and skips outbound requests until the server-specified time has passed, preventing a hammering loop after rate-limiting.
+- **429 Retry-After intentionally ignored** (`usage-api.ts`): the API returns 429 on every poll after a PC restart until the user opens Claude Code. Honouring the `Retry-After` header (typically ~1 h) would leave the plugin blank for an hour even though usage data becomes available the moment Claude Code is launched. 429 is therefore treated like any other transient error: the failure counter increments (triggering normal 45 s → 90 s → … backoff) and stale cache is returned. This is documented in the module-level comment to prevent future agents from re-adding Retry-After enforcement.
 - **Utilisation normalisation threshold** (`usage-api.ts`): the threshold for converting fractional (0–1) values to percent was raised from `≤ 1.0` to `< 2.0`, so values like `1.05` (105%) are no longer incorrectly multiplied a second time.
 - **Token expiry warning** (`usage-api.ts`): moved inside the `try/catch` block so a clock skew or missing `expiresAt` field cannot throw an unhandled exception.
 - **Poller fast-retry timer leak** (`poller.ts`): the initial-retry `setTimeout` handle is now stored in `fastRetryTimer` and cancelled by `stopPolling()` and `_resetPollerStateForTesting()`, preventing ghost polls after all buttons are removed.
