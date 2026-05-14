@@ -14,33 +14,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-05-14
 
 ### Added
-- **Reset-time overlay on key press**: pressing a Usage 5h or Usage 7d button now toggles a 10-second overlay showing:
-  - "resets in X" — remaining time (e.g. "1h 23m", "45m")
-  - Local reset time — time only for 5h (e.g. "14:30"), day + time for 7d (e.g. "Mon 14:30")
-  - Pressing the button a second time reverts immediately; overlay also auto-reverts after 10 s
-- `formatRemaining(resetsAt)` and `formatResetTime(resetsAt, is5h)` exported from `renderer.ts` for time formatting and testability
-- `computeResetImage()` and `toggleResetInfoForButton()` exported from `poller.ts`
-- `_resetPollerStateForTesting()` internal helper in `poller.ts` for unit test isolation
-- New `'reset'` state kind added to `ButtonRenderState` discriminated union
-- Extended test suite: new tests for reset state rendering, `formatRemaining`, `formatResetTime`, `computeResetImage`, and `toggleResetInfoForButton` (including timer-based auto-revert)
-- **CI bundle-format gate** (all three workflows: `push.yml`, `pr.yml`, `release.yml`): after each build, a "Verify bundle format" step checks that `bin/plugin.js` starts with an ESM `import` statement. If a future change reverts the Rollup format to CJS, CI will fail before any artifact is packaged or released.
+- **Reset-time overlay on key press**: pressing a Usage 5h or Usage 7d button toggles a 10-second overlay showing time remaining until reset and the local reset time (time-only for 5h, day + time for 7d). Pressing again reverts immediately; auto-reverts after 10s.
+- **CI bundle-format gate**: all workflows now verify that `bin/plugin.js` starts with an ESM import after every build, preventing accidental regressions to CJS.
 
 ### Fixed
-- **Slow startup (usage % not showing for ~2 minutes)**: if the initial poll on plugin start returned no data (credentials not yet available, network not ready), the next attempt was not scheduled until the regular 120 s interval. The plugin now schedules a fast 15 s retry when the first poll returns no data, so usage appears within ~15 s of the credentials/network becoming available.
-- **Beta bundle incorrectly included `package.json`**: `scripts/package.mjs` generated zip `--exclude` patterns with a trailing `/*` for every entry (e.g. `--exclude "plugin/package.json/*"`). The `/*` suffix only matches contents of a directory; it does not match a plain file. As a result, `package.json` (with `"type": "module"`) was silently included in every beta `.streamDeckPlugin` zip on Linux/macOS, triggering a plugin crash on startup. Fixed by checking whether each exclude entry is a file or a directory and applying the correct pattern (`dir/*` vs `file`). The `release.yml` workflow used hard-coded correct patterns and was not affected.
+- **Slow startup**: if the initial poll returns no data, the plugin now retries after 15s instead of waiting the full 120s interval, so usage appears within ~15s of credentials or network becoming available.
+- **Beta bundle corrupted by `package.json`**: `scripts/package.mjs` now correctly excludes plain files from the zip artifact — previously `package.json` (with `"type": "module"`) was silently included in every beta build, crashing the plugin on startup.
 
 ### Changed
-- **Button label size**: increased "5h" / "7d" label font size from 12 px to 14 px in the main usage, loading, and no-data button states for improved legibility on small physical buttons
-- **Rollup output format**: changed from CommonJS (`format: 'cjs'`) to ES modules (`format: 'esm'`) to align with `package.json`'s `"type": "module"` declaration. This prevents latent crashes if the distributable bundle inadvertently includes `package.json`.
-- **Unit test suite** (Vitest): 133 tests across 4 test files covering `renderer.ts`, `credentials.ts`, `usage-api.ts`, and `poller.ts`
-  - `renderer.test.ts`: SVG generation, colour thresholds, percent clamping, gauge bar, XML escaping, all state kinds
-  - `credentials.test.ts`: `parseCredentialsJson` edge cases, file-based reading, macOS Keychain path and fallback
-  - `usage-api.test.ts`: `parseUtilization` / `parseResetsAt` field-name resilience, fetch normalisation, caching TTL, deduplication, error handling
-  - `poller.test.ts`: `computeImage` routing logic for all billing type / data availability combinations
-- **CI: beta artifact on PRs** — the `CI` workflow now builds and uploads an installable `.streamDeckPlugin` bundle for every pull request. The bundle is versioned as `X.Y.Z-betaNNN` (where `NNN` is the PR number), patch is applied to `manifest.json` before building, and the artifact is retained for 14 days. It appears in the PR "Checks" tab and can be downloaded and installed directly for manual testing.
-- **Debug logging added throughout fetch and key-press chain**: `onKeyDown`, `toggleResetInfoForButton`, `setButtonImage`, `registerButton`, `startPolling`, `poll`, `fetchUsage` (cache hits, backoff, dedup), and `doFetch` (credential read, HTTP request start/response) all emit `[claude-deck]` log entries to aid diagnostics.
-- **Plugin logs not appearing in OpenDeck log file**: `streamDeck.logger` sends log messages over WebSocket (the `logMessage` event). OpenDeck does not write these messages to the plugin log file, so the file existed but was always empty. Introduced `src/log.ts` — a dual logger that writes to both `process.stdout` (via `console.log`/`console.warn`/`console.error`, captured by OpenDeck to the log file) and `streamDeck.logger` (for compatibility with the official Stream Deck software). All log calls across `credentials.ts`, `usage-api.ts`, `poller.ts`, and the action files now use this logger. A startup message (`plugin.ts loading — pid=…`) is also emitted before `streamDeck.connect()` so the very first log line confirms the process is alive.
-- **No-data state on startup 429**: when the Anthropic API returns HTTP 429 before the user has launched `claude` (e.g. at OS boot), buttons now show `–%` (neutral no-data state) instead of `err` (red error state). The plugin continues retrying in the background; once `claude` is run and the token is active, the button updates automatically.
+- **Improved logging**: introduced `src/log.ts` — a dual logger that writes to both `process.stdout` (captured by OpenDeck log file) and `streamDeck.logger` (for official Stream Deck software). All modules now emit `[claude-deck]` log entries with timestamps.
+- **Button label size**: increased "5h" / "7d" labels from 12px to 14px for better legibility on small physical buttons.
+- **Rollup output format**: switched from CommonJS to ES modules to align with `package.json`'s `"type": "module"`.
+- **CI: beta artifacts on PRs**: every pull request now builds and attaches an installable `.streamDeckPlugin` bundle (versioned `X.Y.Z-beta<PR#>`) for manual testing.
+- **No-data state on HTTP 429**: buttons now show `–%` (neutral) instead of `err` (red) when the API returns rate-limited before `claude` has been launched.
+- **Extended test suite**: 133 tests across 4 files covering renderer, credentials, usage-api, and poller modules.
 
 ---
 
@@ -100,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[0.2.2]: https://github.com/alxbck/claude-deck/compare/v0.2.1...v0.2.2
+[0.3.0]: https://github.com/alxbck/claude-deck/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/alxbck/claude-deck/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/alxbck/claude-deck/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alxbck/claude-deck/compare/v0.1.0...v0.1.1
