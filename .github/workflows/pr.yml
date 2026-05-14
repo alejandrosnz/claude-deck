@@ -1,0 +1,82 @@
+name: PR
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  check:
+    name: Typecheck, lint, test & package beta
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: com.claudedeck.sdPlugin/package-lock.json
+
+      - name: Install dependencies
+        working-directory: com.claudedeck.sdPlugin
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: com.claudedeck.sdPlugin
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: com.claudedeck.sdPlugin
+        run: npm run lint
+
+      - name: Test
+        working-directory: com.claudedeck.sdPlugin
+        run: npm test
+
+      - name: Build
+        working-directory: com.claudedeck.sdPlugin
+        run: npm run build
+
+      - name: Verify bundle format
+        run: |
+          # The first line of bin/plugin.js must be an ESM import statement,
+          # not a top-level require() call. A CJS bundle would start with
+          # "var require$$0 = require(...)" and crash Node.js because package.json
+          # declares "type":"module".
+          FIRST=$(head -1 com.claudedeck.sdPlugin/bin/plugin.js)
+          if echo "$FIRST" | grep -q "^import "; then
+            echo "OK: bin/plugin.js starts with ESM import"
+          else
+            echo "FAIL: bin/plugin.js does not start with an ESM import — likely CJS output"
+            echo "First line: $FIRST"
+            exit 1
+          fi
+
+      # Patch root package.json version to X.Y.Z-betaNNN so that
+      # `npm run package` picks it up, syncs manifest.json, builds, and zips.
+      - name: Patch beta version
+        id: beta
+        run: |
+          BASE=$(node -p "require('./package.json').version")
+          BETA="${BASE}-beta${{ github.event.pull_request.number }}"
+          BETA_VERSION="$BETA" node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = process.env.BETA_VERSION;
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "version=${BETA}" >> "$GITHUB_OUTPUT"
+          echo "package.json version => ${BETA}"
+
+      - name: Package beta bundle
+        run: npm run package
+
+      - name: Upload beta artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-deck-v${{ steps.beta.outputs.version }}
+          path: claude-deck-v${{ steps.beta.outputs.version }}.streamDeckPlugin
+          retention-days: 14

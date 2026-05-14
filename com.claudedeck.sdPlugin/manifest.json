@@ -2,24 +2,36 @@
   "Name": "Claude Deck",
   "UUID": "com.claudedeck",
   "Author": "Claude Deck",
-  "Version": "0.1.0",
+  "Version": "0.2.2",
   "SDKVersion": 2,
   "Icon": "assets/icons/usage5h",
   "Category": "Claude Deck",
   "Description": "Shows Claude Code usage stats on your Stream Deck / OpenDeck.",
   "CodePath": "bin/plugin.js",
-  "Nodejs": { "Version": "20" },
+  "Nodejs": {
+    "Version": "20"
+  },
   "OS": [
-    { "Platform": "windows", "MinimumVersion": "10" },
-    { "Platform": "linux" },
-    { "Platform": "mac", "MinimumVersion": "12.0" }
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    },
+    {
+      "Platform": "linux"
+    },
+    {
+      "Platform": "mac",
+      "MinimumVersion": "12.0"
+    }
   ],
   "Actions": [
     {
       "UUID": "com.claudedeck.usage5h",
       "Name": "Usage 5h",
       "Icon": "assets/icons/usage5h",
-      "Controllers": ["Keypad"],
+      "Controllers": [
+        "Keypad"
+      ],
       "States": [
         {
           "Image": "assets/icons/usage5h",
@@ -31,7 +43,9 @@
       "UUID": "com.claudedeck.usage7d",
       "Name": "Usage 7d",
       "Icon": "assets/icons/usage7d",
-      "Controllers": ["Keypad"],
+      "Controllers": [
+        "Keypad"
+      ],
       "States": [
         {
           "Image": "assets/icons/usage7d",

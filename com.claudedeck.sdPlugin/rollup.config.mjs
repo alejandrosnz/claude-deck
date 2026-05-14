@@ -6,10 +6,8 @@ export default {
   input: 'src/plugin.ts',
   output: {
     file: 'bin/plugin.js',
-    format: 'cjs',
+    format: 'esm',
     sourcemap: false,
-    interop: 'auto',
-    exports: 'auto',
   },
   plugins: [
     nodeResolve({ preferBuiltins: true, exportConditions: ['node'] }),

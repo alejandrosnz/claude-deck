@@ -9,19 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] - 2026-05-14
+
 ### Added
-- **Unit test suite** (Vitest): 96 tests across 4 test files covering `renderer.ts`, `credentials.ts`, `usage-api.ts`, and `poller.ts`
-  - `renderer.test.ts`: SVG generation, colour thresholds, percent clamping, gauge bar, XML escaping, all state kinds
-  - `credentials.ts`: `parseCredentialsJson` edge cases, file-based reading, macOS Keychain path and fallback
-  - `usage-api.test.ts`: `parseUtilization` / `parseResetsAt` field-name resilience, fetch normalisation, caching TTL, deduplication, error handling
-  - `poller.test.ts`: `computeImage` routing logic for all billing type / data availability combinations
-- `npm test` script (`vitest run`) and `npm run test:watch` added to `com.claudedeck.sdPlugin/package.json`
-- `vitest.config.ts` added to `com.claudedeck.sdPlugin/`
+- **Reset-time overlay on key press**: pressing a Usage 5h or Usage 7d button toggles a 10-second overlay showing time remaining until reset and the local reset time (time-only for 5h, day + time for 7d). Pressing again reverts immediately; auto-reverts after 10s.
+- **CI bundle-format gate**: all workflows now verify that `bin/plugin.js` starts with an ESM import after every build, preventing accidental regressions to CJS.
+
+### Fixed
+- **Slow startup**: if the initial poll returns no data, the plugin now retries after 15s instead of waiting the full 120s interval, so usage appears within ~15s of credentials or network becoming available.
+- **Beta bundle corrupted by `package.json`**: `scripts/package.mjs` now correctly excludes plain files from the zip artifact — previously `package.json` (with `"type": "module"`) was silently included in every beta build, crashing the plugin on startup.
 
 ### Changed
-- `credentials.ts`: `parseCredentialsJson` is now exported (no behaviour change; exposed for direct unit testing)
-- `usage-api.ts`: `parseUtilization` and `parseResetsAt` are now exported; added `_resetStateForTesting()` internal helper
-- `poller.ts`: `computeImage` is now exported (no behaviour change; exposed for direct unit testing)
+- **Improved logging**: introduced `src/log.ts` — a dual logger that writes to both `process.stdout` (captured by OpenDeck log file) and `streamDeck.logger` (for official Stream Deck software). All modules now emit `[claude-deck]` log entries with timestamps.
+- **Button label size**: increased "5h" / "7d" labels from 12px to 14px for better legibility on small physical buttons.
+- **Rollup output format**: switched from CommonJS to ES modules to align with `package.json`'s `"type": "module"`.
+- **CI: beta artifacts on PRs**: every pull request now builds and attaches an installable `.streamDeckPlugin` bundle (versioned `X.Y.Z-beta<PR#>`) for manual testing.
+- **No-data state on HTTP 429**: buttons now show `–%` (neutral) instead of `err` (red) when the API returns rate-limited before `claude` has been launched.
+- **Extended test suite**: 133 tests across 4 files covering renderer, credentials, usage-api, and poller modules.
 
 ---
 
@@ -81,6 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.3.0]: https://github.com/alxbck/claude-deck/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/alxbck/claude-deck/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/alxbck/claude-deck/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/alxbck/claude-deck/compare/v0.1.0...v0.1.1

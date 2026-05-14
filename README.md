@@ -90,6 +90,16 @@ Then install the built plugin directory into your plugins folder using the manua
 
 ---
 
+## How to use
+
+1. Drag a **Usage 5h** or **Usage 7d** button onto any key slot in your profile.
+2. The button will show a loading indicator briefly, then display the current usage percentage and a colour-coded gauge.
+3. **Press the button** at any time to see how long until the usage window resets. The overlay stays for 10 seconds, or disappears immediately on a second press.
+
+> **Prerequisite:** Claude Code must have been run at least once on this machine and you must be logged in (`claude login`). The plugin reads the OAuth credentials that Claude Code stores locally — if they do not exist yet, the button will stay in the loading state until they are created.
+
+---
+
 ## How it works
 
 ### Data source — Claude Code Usage API
