@@ -112,8 +112,8 @@ function renderResetInfo(remaining: string, resetTime: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
   <text x="${W / 2}" y="17" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="13" text-anchor="middle">resets in</text>
-  <text x="${W / 2}" y="46" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="bold" text-anchor="middle">${x(remaining)}</text>
-  <text x="${W / 2}" y="65" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="14" text-anchor="middle">${x(resetTime)}</text>
+  <text x="${W / 2}" y="46" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="bold" text-anchor="middle">${x(remaining)}</text>
+  <text x="${W / 2}" y="65" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="bold" text-anchor="middle">${x(resetTime)}</text>
 </svg>`;
 }
 
