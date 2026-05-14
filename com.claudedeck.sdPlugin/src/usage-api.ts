@@ -9,7 +9,7 @@
  * - Resilient field parsing (handles renamed API fields)
  */
 
-import streamDeck from '@elgato/streamdeck';
+import { logger } from './log';
 import { readCredentials } from './credentials';
 
 const USAGE_API_URL = 'https://api.anthropic.com/api/oauth/usage';
@@ -44,20 +44,20 @@ export async function fetchUsage(): Promise<UsageData | null> {
   // Return from cache if still fresh.
   const age = Date.now() - cacheTimestamp;
   if (cachedData && age < CACHE_TTL_MS) {
-    streamDeck.logger.info(`[claude-deck] fetchUsage — cache hit (age=${Math.round(age / 1_000)}s)`);
+    logger.info(`[claude-deck] fetchUsage — cache hit (age=${Math.round(age / 1_000)}s)`);
     return cachedData;
   }
 
   // Apply backoff if we have stale cache and are in a failure streak.
   const backoff = getBackoffMs();
   if (backoff > 0 && cachedData && age < backoff) {
-    streamDeck.logger.info(`[claude-deck] fetchUsage — backoff (failures=${consecutiveFailures} wait=${backoff / 1_000}s)`);
+    logger.info(`[claude-deck] fetchUsage — backoff (failures=${consecutiveFailures} wait=${backoff / 1_000}s)`);
     return cachedData;
   }
 
   // Deduplicate concurrent callers.
   if (pendingFetch) {
-    streamDeck.logger.info('[claude-deck] fetchUsage — joining pending fetch');
+    logger.info('[claude-deck] fetchUsage — joining pending fetch');
     return pendingFetch;
   }
   pendingFetch = doFetch();
@@ -90,29 +90,29 @@ function getBackoffMs(): number {
 }
 
 async function doFetch(): Promise<UsageData | null> {
-  streamDeck.logger.info('[claude-deck] doFetch — reading credentials');
+  logger.info('[claude-deck] doFetch — reading credentials');
   const creds = await readCredentials();
   if (!creds) {
-    streamDeck.logger.warn('[claude-deck] No OAuth credentials found');
+    logger.warn('[claude-deck] No OAuth credentials found');
     return cachedData;
   }
-  streamDeck.logger.info('[claude-deck] doFetch — credentials ok, firing HTTP request');
+  logger.info('[claude-deck] doFetch — credentials ok, firing HTTP request');
 
   // Log token expiry as a warning but proceed with the fetch regardless.
   // The server will return 401/403 if the token is truly invalid; the plugin
   // has no ability to refresh tokens itself, so bailing out early here only
   // results in a permanent error state with no data shown.
-  if (creds.expiresAt) {
-    const ttl = creds.expiresAt - Date.now();
-    if (ttl <= 0) {
-      streamDeck.logger.warn('[claude-deck] OAuth token appears expired — attempting fetch anyway');
-    } else if (ttl < TOKEN_EXPIRY_MARGIN_MS) {
-      streamDeck.logger.warn(`[claude-deck] OAuth token expires in ${Math.round(ttl / 60_000)}m — attempting fetch anyway`);
+    if (creds.expiresAt) {
+      const ttl = creds.expiresAt - Date.now();
+      if (ttl <= 0) {
+        logger.warn('[claude-deck] OAuth token appears expired — attempting fetch anyway');
+      } else if (ttl < TOKEN_EXPIRY_MARGIN_MS) {
+        logger.warn(`[claude-deck] OAuth token expires in ${Math.round(ttl / 60_000)}m — attempting fetch anyway`);
+      }
     }
-  }
 
-  try {
-    streamDeck.logger.info('[claude-deck] fetch start');
+    try {
+      logger.info('[claude-deck] fetch start');
     const res = await fetch(USAGE_API_URL, {
       method: 'GET',
       headers: {
@@ -123,12 +123,12 @@ async function doFetch(): Promise<UsageData | null> {
       signal: AbortSignal.timeout(10_000),
     });
 
-    streamDeck.logger.info(`[claude-deck] fetch response status=${res.status}`);
+    logger.info(`[claude-deck] fetch response status=${res.status}`);
 
     if (res.status === 429) {
       consecutiveFailures++;
       const retryAfter = res.headers.get('retry-after');
-      streamDeck.logger.warn(
+      logger.warn(
         `[claude-deck] Rate limited (429). Retry-After: ${retryAfter ?? 'none'}. Backoff: ${getBackoffMs() / 1_000}s`,
       );
       return cachedData;
@@ -136,13 +136,13 @@ async function doFetch(): Promise<UsageData | null> {
 
     if (res.status === 401 || res.status === 403) {
       consecutiveFailures++;
-      streamDeck.logger.warn(`[claude-deck] Auth error ${res.status} — will re-read credentials next attempt`);
+      logger.warn(`[claude-deck] Auth error ${res.status} — will re-read credentials next attempt`);
       return cachedData;
     }
 
     if (!res.ok) {
       consecutiveFailures++;
-      streamDeck.logger.warn(`[claude-deck] API error ${res.status} ${res.statusText}`);
+      logger.warn(`[claude-deck] API error ${res.status} ${res.statusText}`);
       return cachedData;
     }
 
@@ -165,7 +165,7 @@ async function doFetch(): Promise<UsageData | null> {
       inferredBillingType: hasRateLimitData ? 'subscription' : 'api',
     };
 
-    streamDeck.logger.info(
+    logger.info(
       `[claude-deck] 5h=${result.fiveHourPercent?.toFixed(1) ?? 'null'}%  7d=${result.sevenDayPercent?.toFixed(1) ?? 'null'}%`,
     );
 
@@ -175,7 +175,7 @@ async function doFetch(): Promise<UsageData | null> {
     return result;
   } catch (err) {
     consecutiveFailures++;
-    streamDeck.logger.error(`[claude-deck] Fetch failed: ${err}`);
+    logger.error(`[claude-deck] Fetch failed: ${err}`);
     return cachedData;
   }
 }

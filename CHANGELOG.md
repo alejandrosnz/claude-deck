@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
 ---
 
 ## [0.2.2] - 2026-05-14
@@ -39,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `poller.test.ts`: `computeImage` routing logic for all billing type / data availability combinations
 - **CI: beta artifact on PRs** — the `CI` workflow now builds and uploads an installable `.streamDeckPlugin` bundle for every pull request. The bundle is versioned as `X.Y.Z-betaNNN` (where `NNN` is the PR number), patch is applied to `manifest.json` before building, and the artifact is retained for 14 days. It appears in the PR "Checks" tab and can be downloaded and installed directly for manual testing.
 - **Debug logging added throughout fetch and key-press chain**: `onKeyDown`, `toggleResetInfoForButton`, `setButtonImage`, `registerButton`, `startPolling`, `poll`, `fetchUsage` (cache hits, backoff, dedup), and `doFetch` (credential read, HTTP request start/response) all emit `[claude-deck]` log entries to aid diagnostics.
+- **Plugin logs not appearing in OpenDeck log file**: `streamDeck.logger` sends log messages over WebSocket (the `logMessage` event). OpenDeck does not write these messages to the plugin log file, so the file existed but was always empty. Introduced `src/log.ts` — a dual logger that writes to both `process.stdout` (via `console.log`/`console.warn`/`console.error`, captured by OpenDeck to the log file) and `streamDeck.logger` (for compatibility with the official Stream Deck software). All log calls across `credentials.ts`, `usage-api.ts`, `poller.ts`, and the action files now use this logger. A startup message (`plugin.ts loading — pid=…`) is also emitted before `streamDeck.connect()` so the very first log line confirms the process is alive.
 
 ---
 

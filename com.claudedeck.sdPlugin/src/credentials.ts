@@ -9,7 +9,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir, platform } from 'os';
 import { execSync } from 'child_process';
-import streamDeck from '@elgato/streamdeck';
+import { logger } from './log';
 
 export interface OAuthCredentials {
   accessToken: string;
@@ -72,14 +72,14 @@ function readFromFile(): OAuthCredentials | null {
       const raw = readFileSync(filePath, 'utf-8');
       const creds = parseCredentialsJson(raw);
       if (creds) {
-        streamDeck.logger.info(`[claude-deck] Credentials loaded from ${filePath}`);
+        logger.info(`[claude-deck] Credentials loaded from ${filePath}`);
         return creds;
       }
     } catch (err) {
-      streamDeck.logger.warn(`[claude-deck] Failed to read ${filePath}: ${err}`);
+      logger.warn(`[claude-deck] Failed to read ${filePath}: ${err}`);
     }
   }
-  streamDeck.logger.warn(
+  logger.warn(
     `[claude-deck] No credentials file found. Tried: ${candidatePaths().join(', ')}`,
   );
   return null;
