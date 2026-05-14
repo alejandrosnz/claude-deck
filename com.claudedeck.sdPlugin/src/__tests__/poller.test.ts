@@ -39,6 +39,7 @@ import {
   registerButton,
   toggleResetInfoForButton,
   _resetPollerStateForTesting,
+  type KeyActionLike,
 } from '../poller';
 import { renderButtonImage, formatRemaining, formatResetTime } from '../renderer';
 import { fetchUsage } from '../usage-api';
@@ -262,7 +263,7 @@ describe('toggleResetInfoForButton', () => {
   });
 
   it('shows reset info image on first press', async () => {
-    registerButton('btn1', 'com.claudedeck.usage5h');
+    registerButton('btn1', 'com.claudedeck.usage5h', { setImage: mockSetImage as unknown as KeyActionLike['setImage'] });
     await flushPromises(); // drain initial poll
 
     mockSetImage.mockClear();
@@ -273,7 +274,7 @@ describe('toggleResetInfoForButton', () => {
   });
 
   it('shows reset info for 7d button', async () => {
-    registerButton('btn1', 'com.claudedeck.usage7d');
+    registerButton('btn1', 'com.claudedeck.usage7d', { setImage: mockSetImage as unknown as KeyActionLike['setImage'] });
     await flushPromises();
 
     vi.mocked(formatResetTime).mockReturnValue('Mon 14:30');
@@ -289,7 +290,7 @@ describe('toggleResetInfoForButton', () => {
   });
 
   it('reverts to usage image on second press', async () => {
-    registerButton('btn1', 'com.claudedeck.usage5h');
+    registerButton('btn1', 'com.claudedeck.usage5h', { setImage: mockSetImage as unknown as KeyActionLike['setImage'] });
     await flushPromises();
 
     toggleResetInfoForButton('btn1'); // first press → reset info
@@ -303,7 +304,7 @@ describe('toggleResetInfoForButton', () => {
   });
 
   it('auto-reverts to usage image after 10 seconds', async () => {
-    registerButton('btn1', 'com.claudedeck.usage5h');
+    registerButton('btn1', 'com.claudedeck.usage5h', { setImage: mockSetImage as unknown as KeyActionLike['setImage'] });
     await flushPromises();
 
     toggleResetInfoForButton('btn1');
@@ -319,7 +320,7 @@ describe('toggleResetInfoForButton', () => {
   });
 
   it('does not auto-revert if second press cancels the timer', async () => {
-    registerButton('btn1', 'com.claudedeck.usage5h');
+    registerButton('btn1', 'com.claudedeck.usage5h', { setImage: mockSetImage as unknown as KeyActionLike['setImage'] });
     await flushPromises();
 
     toggleResetInfoForButton('btn1'); // enter reset info mode
@@ -338,7 +339,7 @@ describe('toggleResetInfoForButton', () => {
   });
 
   it('poll during reset-info mode does not override the display', async () => {
-    registerButton('btn1', 'com.claudedeck.usage5h');
+    registerButton('btn1', 'com.claudedeck.usage5h', { setImage: mockSetImage as unknown as KeyActionLike['setImage'] });
     await flushPromises();
 
     toggleResetInfoForButton('btn1'); // enter reset info mode
@@ -362,3 +363,4 @@ describe('toggleResetInfoForButton', () => {
     expect(calls[0]).toBe('img:usage:5h'); // 10 s auto-revert fires first
   });
 });
+

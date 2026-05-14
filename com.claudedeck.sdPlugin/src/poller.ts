@@ -21,10 +21,17 @@ const RESET_INFO_DURATION_MS = 10_000;
 
 // ── registry ──────────────────────────────────────────────────────────────────
 
+/** Minimal interface for a key action that can display an image. */
+export interface KeyActionLike {
+  setImage(url: string): Promise<void>;
+}
+
 interface RegisteredButton {
   id: string;
   /** 'com.claudedeck.usage5h' | 'com.claudedeck.usage7d' */
   manifestId: string;
+  /** Direct reference to the SDK action object — avoids getActionById lookup. */
+  keyAction: KeyActionLike;
   /** True while the reset-info overlay is being shown. */
   showingResetInfo: boolean;
   /** Handle for the auto-revert timeout; null when not in reset-info mode. */
@@ -36,11 +43,11 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 /** Most-recent usage data received from the API (or null if never fetched). */
 let lastData: UsageData | null = null;
 
-export function registerButton(id: string, manifestId: string): void {
+export function registerButton(id: string, manifestId: string, keyAction: KeyActionLike): void {
   if (!registry.some(b => b.id === id)) {
-    registry.push({ id, manifestId, showingResetInfo: false, resetTimer: null });
+    registry.push({ id, manifestId, keyAction, showingResetInfo: false, resetTimer: null });
     // Show loading state immediately when button appears
-    showLoadingState(id, manifestId);
+    void showLoadingState(id, manifestId, keyAction);
   }
   if (pollTimer === null) {
     startPolling();
@@ -87,20 +94,12 @@ async function poll(): Promise<void> {
 
 // ── rendering ─────────────────────────────────────────────────────────────────
 
-/** Type guard: check if action has setImage method (KeyAction). */
-function isKeyAction(action: unknown): action is { setImage(url: string): Promise<void> } {
-  return action != null && typeof (action as Record<string, unknown>).setImage === 'function';
-}
-
-function showLoadingState(id: string, manifestId: string): void {
+async function showLoadingState(id: string, manifestId: string, keyAction: KeyActionLike): Promise<void> {
   try {
-    const action = streamDeck.actions.getActionById(id);
-    if (isKeyAction(action)) {
-      const is5h = manifestId === 'com.claudedeck.usage5h';
-      const label = is5h ? '5h' : '7d';
-      const imageUrl = renderButtonImage({ kind: 'loading' }, label);
-      void action.setImage(imageUrl);
-    }
+    const is5h = manifestId === 'com.claudedeck.usage5h';
+    const label = is5h ? '5h' : '7d';
+    const imageUrl = renderButtonImage({ kind: 'loading' }, label);
+    await keyAction.setImage(imageUrl);
   } catch (err) {
     streamDeck.logger.error(`[claude-deck] showLoadingState failed for ${id}: ${err}`);
   }
@@ -108,10 +107,7 @@ function showLoadingState(id: string, manifestId: string): void {
 
 async function setButtonImage(btn: RegisteredButton, imageUrl: string): Promise<void> {
   try {
-    const action = streamDeck.actions.getActionById(btn.id);
-    if (isKeyAction(action)) {
-      await action.setImage(imageUrl);
-    }
+    await btn.keyAction.setImage(imageUrl);
   } catch (err) {
     streamDeck.logger.error(`[claude-deck] setImage failed for ${btn.id}: ${err}`);
   }
