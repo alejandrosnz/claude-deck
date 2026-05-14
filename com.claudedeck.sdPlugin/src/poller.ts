@@ -18,6 +18,8 @@ import { renderButtonImage, formatRemaining, formatResetTime, type ButtonRenderS
 
 const POLL_INTERVAL_MS = 120_000;
 const RESET_INFO_DURATION_MS = 10_000;
+/** How long to wait before retrying if the very first poll returns no data. */
+const INITIAL_RETRY_MS = 15_000;
 
 // ── registry ──────────────────────────────────────────────────────────────────
 
@@ -44,6 +46,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let lastData: UsageData | null = null;
 
 export function registerButton(id: string, manifestId: string, keyAction: KeyActionLike): void {
+  streamDeck.logger.info(`[claude-deck] registerButton id=${id} manifestId=${manifestId}`);
   if (!registry.some(b => b.id === id)) {
     registry.push({ id, manifestId, keyAction, showingResetInfo: false, resetTimer: null });
     // Show loading state immediately when button appears
@@ -69,9 +72,29 @@ export function unregisterButton(id: string): void {
 // ── polling ───────────────────────────────────────────────────────────────────
 
 function startPolling(): void {
-  // Immediate first fetch.
-  void poll();
+  streamDeck.logger.info('[claude-deck] startPolling — firing initial poll');
+  void doInitialPoll();
   pollTimer = setInterval(() => void poll(), POLL_INTERVAL_MS);
+}
+
+/**
+ * Runs the first poll immediately. If it returns no data (credentials missing,
+ * network not ready yet, etc.) schedules one fast retry after INITIAL_RETRY_MS
+ * instead of waiting the full 120 s interval.
+ */
+async function doInitialPoll(): Promise<void> {
+  await poll();
+  if (lastData === null) {
+    streamDeck.logger.info(
+      `[claude-deck] Initial poll returned no data — scheduling fast retry in ${INITIAL_RETRY_MS / 1_000}s`,
+    );
+    setTimeout(() => {
+      if (pollTimer !== null) {
+        streamDeck.logger.info('[claude-deck] Fast retry firing');
+        void poll();
+      }
+    }, INITIAL_RETRY_MS);
+  }
 }
 
 function stopPolling(): void {
@@ -88,7 +111,9 @@ export async function manualRefresh(): Promise<void> {
 }
 
 async function poll(): Promise<void> {
+  streamDeck.logger.info('[claude-deck] poll start');
   const data = await fetchUsage();
+  streamDeck.logger.info(`[claude-deck] poll done — data=${data === null ? 'null' : 'ok'}`);
   await updateAllButtons(data);
 }
 
@@ -107,7 +132,9 @@ async function showLoadingState(id: string, manifestId: string, keyAction: KeyAc
 
 async function setButtonImage(btn: RegisteredButton, imageUrl: string): Promise<void> {
   try {
+    streamDeck.logger.info(`[claude-deck] setImage id=${btn.id} urlLen=${imageUrl.length}`);
     await btn.keyAction.setImage(imageUrl);
+    streamDeck.logger.info(`[claude-deck] setImage done id=${btn.id}`);
   } catch (err) {
     streamDeck.logger.error(`[claude-deck] setImage failed for ${btn.id}: ${err}`);
   }
@@ -130,7 +157,9 @@ async function updateAllButtons(data: UsageData | null): Promise<void> {
  * usage view for the specific button instance that was pressed.
  */
 export function toggleResetInfoForButton(id: string): void {
+  streamDeck.logger.info(`[claude-deck] toggleResetInfo id=${id} registrySize=${registry.length} ids=${registry.map(b => b.id).join(',')}`);
   const btn = registry.find(b => b.id === id);
+  streamDeck.logger.info(`[claude-deck] toggleResetInfo btnFound=${!!btn}`);
   if (!btn) return;
 
   if (btn.showingResetInfo) {

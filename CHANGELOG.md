@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New `'reset'` state kind added to `ButtonRenderState` discriminated union
 - Extended test suite: new tests for reset state rendering, `formatRemaining`, `formatResetTime`, `computeResetImage`, and `toggleResetInfoForButton` (including timer-based auto-revert)
 
+### Fixed
+- **Slow startup (usage % not showing for ~2 minutes)**: if the initial poll on plugin start returned no data (credentials not yet available, network not ready), the next attempt was not scheduled until the regular 120 s interval. The plugin now schedules a fast 15 s retry when the first poll returns no data, so usage appears within ~15 s of the credentials/network becoming available.
+
 ### Changed
 - **Button label size**: increased "5h" / "7d" label font size from 12 px to 14 px in the main usage, loading, and no-data button states for improved legibility on small physical buttons
 - **Unit test suite** (Vitest): 133 tests across 4 test files covering `renderer.ts`, `credentials.ts`, `usage-api.ts`, and `poller.ts`
@@ -32,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `usage-api.test.ts`: `parseUtilization` / `parseResetsAt` field-name resilience, fetch normalisation, caching TTL, deduplication, error handling
   - `poller.test.ts`: `computeImage` routing logic for all billing type / data availability combinations
 - **CI: beta artifact on PRs** — the `CI` workflow now builds and uploads an installable `.streamDeckPlugin` bundle for every pull request. The bundle is versioned as `X.Y.Z-betaNNN` (where `NNN` is the PR number), patch is applied to `manifest.json` before building, and the artifact is retained for 14 days. It appears in the PR "Checks" tab and can be downloaded and installed directly for manual testing.
+- **Debug logging added throughout fetch and key-press chain**: `onKeyDown`, `toggleResetInfoForButton`, `setButtonImage`, `registerButton`, `startPolling`, `poll`, `fetchUsage` (cache hits, backoff, dedup), and `doFetch` (credential read, HTTP request start/response) all emit `[claude-deck]` log entries to aid diagnostics.
 
 ---
 

@@ -44,17 +44,22 @@ export async function fetchUsage(): Promise<UsageData | null> {
   // Return from cache if still fresh.
   const age = Date.now() - cacheTimestamp;
   if (cachedData && age < CACHE_TTL_MS) {
+    streamDeck.logger.info(`[claude-deck] fetchUsage — cache hit (age=${Math.round(age / 1_000)}s)`);
     return cachedData;
   }
 
   // Apply backoff if we have stale cache and are in a failure streak.
   const backoff = getBackoffMs();
   if (backoff > 0 && cachedData && age < backoff) {
+    streamDeck.logger.info(`[claude-deck] fetchUsage — backoff (failures=${consecutiveFailures} wait=${backoff / 1_000}s)`);
     return cachedData;
   }
 
   // Deduplicate concurrent callers.
-  if (pendingFetch) return pendingFetch;
+  if (pendingFetch) {
+    streamDeck.logger.info('[claude-deck] fetchUsage — joining pending fetch');
+    return pendingFetch;
+  }
   pendingFetch = doFetch();
   try {
     return await pendingFetch;
@@ -85,11 +90,13 @@ function getBackoffMs(): number {
 }
 
 async function doFetch(): Promise<UsageData | null> {
+  streamDeck.logger.info('[claude-deck] doFetch — reading credentials');
   const creds = await readCredentials();
   if (!creds) {
     streamDeck.logger.warn('[claude-deck] No OAuth credentials found');
     return cachedData;
   }
+  streamDeck.logger.info('[claude-deck] doFetch — credentials ok, firing HTTP request');
 
   // Log token expiry as a warning but proceed with the fetch regardless.
   // The server will return 401/403 if the token is truly invalid; the plugin
@@ -105,6 +112,7 @@ async function doFetch(): Promise<UsageData | null> {
   }
 
   try {
+    streamDeck.logger.info('[claude-deck] fetch start');
     const res = await fetch(USAGE_API_URL, {
       method: 'GET',
       headers: {
@@ -114,6 +122,8 @@ async function doFetch(): Promise<UsageData | null> {
       },
       signal: AbortSignal.timeout(10_000),
     });
+
+    streamDeck.logger.info(`[claude-deck] fetch response status=${res.status}`);
 
     if (res.status === 429) {
       consecutiveFailures++;
