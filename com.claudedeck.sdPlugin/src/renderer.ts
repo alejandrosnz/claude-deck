@@ -11,11 +11,10 @@
  *
  * The reset-time line was removed — 9 px text is illegible on a 12 mm button.
  *
- * Reset info layout (shown on key press, 10 s):
- *   y=14    label "5h" / "7d"   (12 px bold, grey)
- *   y=28    "resets in"         (10 px grey)
- *   y=50    remaining "1h 23m"  (22 px bold, white)
- *   y=64    "14:30" / "Mon 14:30"  (11 px grey)
+ * Reset info layout (shown on key press, 10 s — no heading, full height used):
+ *   y=17    "resets in"         (13 px grey)
+ *   y=46    remaining "1h 23m"  (26 px bold, white)  ← hero
+ *   y=65    "14:30" / "Mon 14:30"  (14 px grey)
  */
 
 const W = 72;
@@ -61,7 +60,7 @@ export function renderButtonImage(state: ButtonRenderState, label: string): stri
       svg = renderUsage(label, state.percent, state.resetsAt);
       break;
     case 'reset':
-      svg = renderResetInfo(label, state.remaining, state.resetTime);
+      svg = renderResetInfo(state.remaining, state.resetTime);
       break;
     case 'loading':
       svg = renderStatus(label, '···', COLOR_GREY);
@@ -109,13 +108,12 @@ function renderNoData(label: string): string {
 </svg>`;
 }
 
-function renderResetInfo(label: string, remaining: string, resetTime: string): string {
+function renderResetInfo(remaining: string, resetTime: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="${COLOR_BG}"/>
-  <text x="${W / 2}" y="14" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="2">${x(label)}</text>
-  <text x="${W / 2}" y="28" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="10" text-anchor="middle">resets in</text>
-  <text x="${W / 2}" y="50" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="bold" text-anchor="middle">${x(remaining)}</text>
-  <text x="${W / 2}" y="64" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="11" text-anchor="middle">${x(resetTime)}</text>
+  <text x="${W / 2}" y="17" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="13" text-anchor="middle">resets in</text>
+  <text x="${W / 2}" y="46" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="bold" text-anchor="middle">${x(remaining)}</text>
+  <text x="${W / 2}" y="65" fill="${COLOR_LABEL}" font-family="Arial,Helvetica,sans-serif" font-size="14" text-anchor="middle">${x(resetTime)}</text>
 </svg>`;
 }
 

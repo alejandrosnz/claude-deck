@@ -9,10 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-
 ---
 
-## [0.2.2] - 2026-05-14
+## [0.3.0] - 2026-05-14
 
 ### Added
 - **Reset-time overlay on key press**: pressing a Usage 5h or Usage 7d button now toggles a 10-second overlay showing:

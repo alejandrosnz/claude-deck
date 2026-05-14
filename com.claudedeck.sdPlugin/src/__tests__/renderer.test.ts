@@ -229,11 +229,6 @@ describe('renderButtonImage — reset state', () => {
     expect(svg).toContain('resets in');
   });
 
-  it('includes the button label', () => {
-    expect(decodeSvg(renderButtonImage({ kind: 'reset', remaining: '1h 0m', resetTime: '18:00' }, '5h'))).toContain('5h');
-    expect(decodeSvg(renderButtonImage({ kind: 'reset', remaining: '1d 2h', resetTime: 'Fri 00:00' }, '7d'))).toContain('7d');
-  });
-
   it('uses white colour for remaining time', () => {
     const svg = decodeSvg(renderButtonImage({ kind: 'reset', remaining: '1h 0m', resetTime: '18:00' }, '5h'));
     expect(svg).toContain('#ffffff');
