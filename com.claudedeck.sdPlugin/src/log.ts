@@ -22,8 +22,9 @@ export const logger = {
     console.warn(`${stamp()} [WARN] ${msg}`);
     try { streamDeck.logger.warn(msg); } catch { /* swallow */ }
   },
-  error(msg: string): void {
-    console.error(`${stamp()} [ERROR] ${msg}`);
-    try { streamDeck.logger.error(msg); } catch { /* swallow */ }
+  error(msg: string | Error): void {
+    const s = msg instanceof Error ? (msg.stack ?? `${msg.name}: ${msg.message}`) : msg;
+    console.error(`${stamp()} [ERROR] ${s}`);
+    try { streamDeck.logger.error(s); } catch { /* swallow */ }
   },
 };

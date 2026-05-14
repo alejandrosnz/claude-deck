@@ -5,6 +5,7 @@
  * - In-memory cache with 120 s TTL
  * - Pending-promise mutex (no concurrent in-flight requests)
  * - Exponential backoff on repeated failures (45 s / 90 s / 180 s / 300 s)
+ * - Honour server Retry-After header on 429 responses
  * - Re-reads credentials on 401/403
  * - Resilient field parsing (handles renamed API fields)
  */
@@ -31,6 +32,11 @@ export interface UsageData {
 let cachedData: UsageData | null = null;
 let cacheTimestamp = 0;
 let consecutiveFailures = 0;
+/**
+ * Absolute epoch timestamp (ms) before which no new request should be made.
+ * Set when the server responds with a Retry-After header on a 429.
+ */
+let retryUntilMs = 0;
 /** Pending fetch promise — prevents concurrent requests. */
 let pendingFetch: Promise<UsageData | null> | null = null;
 
@@ -45,6 +51,14 @@ export async function fetchUsage(): Promise<UsageData | null> {
   const age = Date.now() - cacheTimestamp;
   if (cachedData && age < CACHE_TTL_MS) {
     logger.info(`[claude-deck] fetchUsage — cache hit (age=${Math.round(age / 1_000)}s)`);
+    return cachedData;
+  }
+
+  // Honour server-specified Retry-After deadline (takes priority over backoff).
+  if (Date.now() < retryUntilMs) {
+    logger.info(
+      `[claude-deck] fetchUsage — Retry-After wait active (${Math.round((retryUntilMs - Date.now()) / 1_000)}s remaining)`,
+    );
     return cachedData;
   }
 
@@ -72,6 +86,7 @@ export async function fetchUsage(): Promise<UsageData | null> {
 export function invalidateCache(): void {
   cachedData = null;
   cacheTimestamp = 0;
+  retryUntilMs = 0;
 }
 
 /** @internal Resets all module-level state. Only for use in tests. */
@@ -79,6 +94,7 @@ export function _resetStateForTesting(): void {
   cachedData = null;
   cacheTimestamp = 0;
   consecutiveFailures = 0;
+  retryUntilMs = 0;
   pendingFetch = null;
 }
 
@@ -89,19 +105,35 @@ function getBackoffMs(): number {
   return BACKOFF_INTERVALS_MS[Math.min(consecutiveFailures - 1, BACKOFF_INTERVALS_MS.length - 1)];
 }
 
+/**
+ * Parses an HTTP Retry-After header value and returns the delay in milliseconds.
+ * Handles both integer-seconds ("60") and HTTP-date forms.
+ */
+function parseRetryAfterMs(header: string): number {
+  const seconds = parseInt(header, 10);
+  if (!isNaN(seconds) && seconds > 0) return seconds * 1_000;
+  const date = new Date(header).getTime();
+  if (!isNaN(date) && date > Date.now()) return date - Date.now();
+  return 0;
+}
+
 async function doFetch(): Promise<UsageData | null> {
   logger.info('[claude-deck] doFetch — reading credentials');
   const creds = await readCredentials();
   if (!creds) {
+    // Credential absence is not a network failure — do not increment
+    // consecutiveFailures. The 120 s poll interval is already an appropriate
+    // retry cadence, and we don't want backoff to delay recovery once
+    // credentials reappear.
     logger.warn('[claude-deck] No OAuth credentials found');
     return cachedData;
   }
   logger.info('[claude-deck] doFetch — credentials ok, firing HTTP request');
 
-  // Log token expiry as a warning but proceed with the fetch regardless.
-  // The server will return 401/403 if the token is truly invalid; the plugin
-  // has no ability to refresh tokens itself, so bailing out early here only
-  // results in a permanent error state with no data shown.
+  try {
+    // Log token expiry as a warning but proceed regardless. The server will
+    // return 401/403 if the token is truly invalid; the plugin cannot refresh
+    // tokens itself, so failing early only produces a permanent error state.
     if (creds.expiresAt) {
       const ttl = creds.expiresAt - Date.now();
       if (ttl <= 0) {
@@ -111,8 +143,7 @@ async function doFetch(): Promise<UsageData | null> {
       }
     }
 
-    try {
-      logger.info('[claude-deck] fetch start');
+    logger.info('[claude-deck] fetch start');
     const res = await fetch(USAGE_API_URL, {
       method: 'GET',
       headers: {
@@ -128,9 +159,23 @@ async function doFetch(): Promise<UsageData | null> {
     if (res.status === 429) {
       consecutiveFailures++;
       const retryAfter = res.headers.get('retry-after');
-      logger.warn(
-        `[claude-deck] Rate limited (429). Retry-After: ${retryAfter ?? 'none'}. Backoff: ${getBackoffMs() / 1_000}s`,
-      );
+      if (retryAfter !== null) {
+        const waitMs = parseRetryAfterMs(retryAfter);
+        if (waitMs > 0) {
+          retryUntilMs = Date.now() + waitMs;
+          logger.warn(
+            `[claude-deck] Rate limited (429). Honouring Retry-After: ${Math.round(waitMs / 1_000)}s`,
+          );
+        } else {
+          logger.warn(
+            `[claude-deck] Rate limited (429). Retry-After unparseable: "${retryAfter}". Fallback backoff: ${getBackoffMs() / 1_000}s`,
+          );
+        }
+      } else {
+        logger.warn(
+          `[claude-deck] Rate limited (429). No Retry-After header. Backoff: ${getBackoffMs() / 1_000}s`,
+        );
+      }
       return cachedData;
     }
 
@@ -153,9 +198,12 @@ async function doFetch(): Promise<UsageData | null> {
     let fiveHourPercent = parseUtilization(body.five_hour);
     let sevenDayPercent = parseUtilization(body.seven_day);
 
-    // API returns 0.0–1.0; normalise to 0–100.
-    if (fiveHourPercent !== null && fiveHourPercent <= 1.0) fiveHourPercent *= 100;
-    if (sevenDayPercent !== null && sevenDayPercent <= 1.0) sevenDayPercent *= 100;
+    // API returns 0.0–1.0 fractions; normalise to 0–100.
+    // Values ≥ 2.0 are assumed to already be in percentage form (e.g. 85 → 85%).
+    // Values < 2.0 are treated as fractions, including slightly-over-limit values
+    // like 1.05 (→ 105%), which the renderer clamps to 100 for display.
+    if (fiveHourPercent !== null && fiveHourPercent < 2.0) fiveHourPercent *= 100;
+    if (sevenDayPercent !== null && sevenDayPercent < 2.0) sevenDayPercent *= 100;
 
     const result: UsageData = {
       fiveHourPercent,
@@ -172,6 +220,7 @@ async function doFetch(): Promise<UsageData | null> {
     cachedData = result;
     cacheTimestamp = Date.now();
     consecutiveFailures = 0;
+    retryUntilMs = 0; // clear any Retry-After deadline on success
     return result;
   } catch (err) {
     consecutiveFailures++;

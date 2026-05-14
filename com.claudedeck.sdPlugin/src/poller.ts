@@ -42,6 +42,11 @@ interface RegisteredButton {
 
 const registry: RegisteredButton[] = [];
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+/**
+ * One-shot timer set after a failed initial poll to trigger a fast retry.
+ * Stored so it can be cancelled if buttons are removed before it fires.
+ */
+let fastRetryTimer: ReturnType<typeof setTimeout> | null = null;
 /** Most-recent usage data received from the API (or null if never fetched). */
 let lastData: UsageData | null = null;
 
@@ -88,7 +93,8 @@ async function doInitialPoll(): Promise<void> {
     logger.info(
       `[claude-deck] Initial poll returned no data — scheduling fast retry in ${INITIAL_RETRY_MS / 1_000}s`,
     );
-    setTimeout(() => {
+    fastRetryTimer = setTimeout(() => {
+      fastRetryTimer = null;
       if (pollTimer !== null) {
         logger.info('[claude-deck] Fast retry firing');
         void poll();
@@ -102,12 +108,10 @@ function stopPolling(): void {
     clearInterval(pollTimer);
     pollTimer = null;
   }
-}
-
-/** Invalidates the cache and triggers an immediate poll (for external use). */
-export async function manualRefresh(): Promise<void> {
-  invalidateCache();
-  await poll();
+  if (fastRetryTimer !== null) {
+    clearTimeout(fastRetryTimer);
+    fastRetryTimer = null;
+  }
 }
 
 async function poll(): Promise<void> {
@@ -121,8 +125,7 @@ async function poll(): Promise<void> {
 
 async function showLoadingState(id: string, manifestId: string, keyAction: KeyActionLike): Promise<void> {
   try {
-    const is5h = manifestId === 'com.claudedeck.usage5h';
-    const label = is5h ? '5h' : '7d';
+    const { label } = resolveButtonInfo(manifestId);
     const imageUrl = renderButtonImage({ kind: 'loading' }, label);
     await keyAction.setImage(imageUrl);
   } catch (err) {
@@ -142,7 +145,9 @@ async function setButtonImage(btn: RegisteredButton, imageUrl: string): Promise<
 
 async function updateAllButtons(data: UsageData | null): Promise<void> {
   lastData = data;
-  for (const btn of registry) {
+  // Snapshot the registry to avoid skipped entries if unregisterButton is
+  // called (via splice) while we are awaiting setButtonImage.
+  for (const btn of [...registry]) {
     // Don't override the reset-info display while it's visible.
     if (btn.showingResetInfo) continue;
     const imageUrl = computeImage(btn.manifestId, data);
@@ -164,7 +169,7 @@ export function toggleResetInfoForButton(id: string): void {
 
   if (btn.showingResetInfo) {
     // Second press while info is shown → revert immediately.
-    clearBtnResetTimer(btn);
+    clearButtonResetTimer(btn);
     void setButtonImage(btn, computeImage(btn.manifestId, lastData));
   } else {
     // First press → show reset info and start auto-revert timer.
@@ -178,7 +183,7 @@ export function toggleResetInfoForButton(id: string): void {
   }
 }
 
-function clearBtnResetTimer(btn: RegisteredButton): void {
+function clearButtonResetTimer(btn: RegisteredButton): void {
   if (btn.resetTimer !== null) {
     clearTimeout(btn.resetTimer);
     btn.resetTimer = null;
@@ -189,8 +194,7 @@ function clearBtnResetTimer(btn: RegisteredButton): void {
 // ── image computation ─────────────────────────────────────────────────────────
 
 export function computeImage(manifestId: string, data: UsageData | null): string {
-  const is5h = manifestId === 'com.claudedeck.usage5h';
-  const label = is5h ? '5h' : '7d';
+  const { is5h, label } = resolveButtonInfo(manifestId);
 
   if (!data) {
     return renderButtonImage({ kind: 'nodata' }, label);
@@ -201,13 +205,12 @@ export function computeImage(manifestId: string, data: UsageData | null): string
   }
 
   const percent = is5h ? data.fiveHourPercent : data.sevenDayPercent;
-  const resetsAt = is5h ? data.fiveHourResetsAt : data.sevenDayResetsAt;
 
   if (percent === null) {
     return renderButtonImage({ kind: 'nodata' }, label);
   }
 
-  const state: ButtonRenderState = { kind: 'usage', percent, resetsAt };
+  const state: ButtonRenderState = { kind: 'usage', percent };
   return renderButtonImage(state, label);
 }
 
@@ -216,8 +219,7 @@ export function computeImage(manifestId: string, data: UsageData | null): string
  * Shows time remaining and the local reset time.
  */
 export function computeResetImage(manifestId: string, data: UsageData | null): string {
-  const is5h = manifestId === 'com.claudedeck.usage5h';
-  const label = is5h ? '5h' : '7d';
+  const { is5h, label } = resolveButtonInfo(manifestId);
 
   if (!data || data.inferredBillingType === 'api') {
     return renderButtonImage({ kind: 'nodata' }, label);
@@ -235,6 +237,14 @@ export function computeResetImage(manifestId: string, data: UsageData | null): s
   return renderButtonImage({ kind: 'reset', remaining, resetTime }, label);
 }
 
+// ── private helpers ───────────────────────────────────────────────────────────
+
+/** Resolves the display label and 5h/7d flag from a manifest action UUID. */
+function resolveButtonInfo(manifestId: string): { is5h: boolean; label: string } {
+  const is5h = manifestId === 'com.claudedeck.usage5h';
+  return { is5h, label: is5h ? '5h' : '7d' };
+}
+
 // ── test helpers ──────────────────────────────────────────────────────────────
 
 /** Resets all module-level state. Call only from unit tests. */
@@ -246,6 +256,10 @@ export function _resetPollerStateForTesting(): void {
   if (pollTimer !== null) {
     clearInterval(pollTimer);
     pollTimer = null;
+  }
+  if (fastRetryTimer !== null) {
+    clearTimeout(fastRetryTimer);
+    fastRetryTimer = null;
   }
   lastData = null;
 }

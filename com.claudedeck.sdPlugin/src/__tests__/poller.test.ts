@@ -111,18 +111,18 @@ describe('computeImage', () => {
   });
 
   describe('when data is available (subscription plan with percent)', () => {
-    it('passes the 5h percent and resetsAt to renderButtonImage', () => {
+    it('passes the 5h percent to renderButtonImage', () => {
       computeImage('com.claudedeck.usage5h', subscriptionData);
       expect(renderButtonImage).toHaveBeenCalledWith(
-        { kind: 'usage', percent: 42, resetsAt: '2026-05-12T18:00:00Z' },
+        { kind: 'usage', percent: 42 },
         '5h',
       );
     });
 
-    it('passes the 7d percent and resetsAt to renderButtonImage', () => {
+    it('passes the 7d percent to renderButtonImage', () => {
       computeImage('com.claudedeck.usage7d', subscriptionData);
       expect(renderButtonImage).toHaveBeenCalledWith(
-        { kind: 'usage', percent: 15, resetsAt: '2026-05-19T00:00:00Z' },
+        { kind: 'usage', percent: 15 },
         '7d',
       );
     });

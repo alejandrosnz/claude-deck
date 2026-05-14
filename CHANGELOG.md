@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **429 Retry-After honoured** (`usage-api.ts`): the plugin now parses the `Retry-After` header (integer seconds or HTTP-date) and skips outbound requests until the server-specified time has passed, preventing a hammering loop after rate-limiting.
+- **Utilisation normalisation threshold** (`usage-api.ts`): the threshold for converting fractional (0–1) values to percent was raised from `≤ 1.0` to `< 2.0`, so values like `1.05` (105%) are no longer incorrectly multiplied a second time.
+- **Token expiry warning** (`usage-api.ts`): moved inside the `try/catch` block so a clock skew or missing `expiresAt` field cannot throw an unhandled exception.
+- **Poller fast-retry timer leak** (`poller.ts`): the initial-retry `setTimeout` handle is now stored in `fastRetryTimer` and cancelled by `stopPolling()` and `_resetPollerStateForTesting()`, preventing ghost polls after all buttons are removed.
+- **Registry mutation during async iteration** (`poller.ts`): `updateAllButtons` now snapshots `[...registry]` before iterating, preventing skipped entries when `unregisterButton` splices the array mid-await.
+- **Invalid-date guards in renderer** (`renderer.ts`): `formatRemaining` and `formatResetTime` now return `'now'` and `'--:--'` respectively when passed a non-parseable date string, instead of displaying `NaN`.
+- **Gauge fill corner-radius clamp** (`renderer.ts`): `rx` on the fill rect is now clamped to `Math.min(BAR_RADIUS, Math.floor(fillWidth / 2))`, preventing the fill from becoming wider than tall at very low percentages and rendering as an oval.
+
+### Changed
+- **`logger.error()` accepts `Error` objects** (`log.ts`): signature widened from `string` to `string | Error`; when passed an `Error`, the full `.stack` trace is logged.
+- **`credentials.ts` path deduplication**: `candidatePaths()` is called once and its result stored; removed a redundant `existsSync` pre-check (the subsequent `readFileSync` try/catch is sufficient).
+- **`ButtonRenderState.usage` no longer carries `resetsAt`** (`renderer.ts`): the field was silently ignored by the renderer. Removed from the public type to eliminate dead data in callers.
+- **`escapeXml` naming** (`renderer.ts`): internal SVG-escape helper renamed from `x()` to `escapeXml()` for clarity.
+- **`svgWrapper` extracted** (`renderer.ts`): common SVG scaffold (background rect + label text) extracted into a `svgWrapper(label, body)` helper, removing duplication across render functions.
+- **`resolveButtonInfo` extracted** (`poller.ts`): `is5h` / `label` derivation from a manifest UUID is now a single `resolveButtonInfo(manifestId)` helper used by `computeImage`, `computeResetImage`, and indirectly `showLoadingState`.
+- **`clearButtonResetTimer` renamed** (`poller.ts`): was `clearBtnResetTimer`; full name improves readability.
+- **`manualRefresh` unexported** (`poller.ts`): was exported but had no callers outside the module; removed `export` to avoid an unused public API.
+- **Rollup `CIRCULAR_DEPENDENCY` filter tightened** (`rollup.config.mjs`): suppression now only applies to cycles where every file involved lives under `node_modules`; cycles in `src/` will surface as warnings.
+- **Root `package.json` `test` script added**: `npm test` from the repository root now proxies to the plugin package, matching `build`, `typecheck`, and `lint`.
+- **Plugin `icons` script path corrected** (`com.claudedeck.sdPlugin/package.json`): was `node scripts/svg-to-png.mjs`; corrected to `node ../scripts/svg-to-png.mjs`.
+
 ---
 
 ## [0.3.0] - 2026-05-14

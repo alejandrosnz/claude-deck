@@ -43,8 +43,7 @@ describe('renderButtonImage — output format', () => {
     { kind: 'loading' },
     { kind: 'error' },
     { kind: 'nodata' },
-    { kind: 'usage', percent: 42, resetsAt: null },
-    { kind: 'usage', percent: 42, resetsAt: '2026-05-12T18:00:00Z' },
+    { kind: 'usage', percent: 42 },
     { kind: 'reset', remaining: '1h 30m', resetTime: '14:30' },
   ];
 
@@ -67,61 +66,61 @@ describe('renderButtonImage — output format', () => {
 
 describe('renderButtonImage — usage state', () => {
   it('includes the percentage text', () => {
-    const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 42, resetsAt: null }, '5h'));
+    const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 42 }, '5h'));
     expect(svg).toContain('42%');
   });
 
   it('rounds fractional percent values', () => {
-    const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 42.7, resetsAt: null }, '5h'));
+    const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 42.7 }, '5h'));
     expect(svg).toContain('43%');
   });
 
   describe('colour thresholds', () => {
     it('uses green for percent = 0', () => {
-      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 0, resetsAt: null }, '5h'))).toContain('#2ecc40');
+      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 0 }, '5h'))).toContain('#2ecc40');
     });
 
     it('uses green for percent = 70 (boundary)', () => {
-      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 70, resetsAt: null }, '5h'))).toContain('#2ecc40');
+      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 70 }, '5h'))).toContain('#2ecc40');
     });
 
     it('uses amber for percent = 71 (just above green threshold)', () => {
-      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 71, resetsAt: null }, '5h'))).toContain('#ff851b');
+      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 71 }, '5h'))).toContain('#ff851b');
     });
 
     it('uses amber for percent = 90 (boundary)', () => {
-      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 90, resetsAt: null }, '5h'))).toContain('#ff851b');
+      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 90 }, '5h'))).toContain('#ff851b');
     });
 
     it('uses red for percent = 91 (just above amber threshold)', () => {
-      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 91, resetsAt: null }, '5h'))).toContain('#ff4136');
+      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 91 }, '5h'))).toContain('#ff4136');
     });
 
     it('uses red for percent = 100', () => {
-      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 100, resetsAt: null }, '5h'))).toContain('#ff4136');
+      expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 100 }, '5h'))).toContain('#ff4136');
     });
   });
 
   describe('percent clamping', () => {
     it('clamps percent above 100 to 100', () => {
-      const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 200, resetsAt: null }, '5h'));
+      const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 200 }, '5h'));
       expect(svg).toContain('100%');
     });
 
     it('clamps percent below 0 to 0', () => {
-      const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: -5, resetsAt: null }, '5h'));
+      const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: -5 }, '5h'));
       expect(svg).toContain('0%');
     });
   });
 
   describe('gauge bar', () => {
     it('renders only background + track rect (no fill) when percent = 0', () => {
-      const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 0, resetsAt: null }, '5h'));
+      const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 0 }, '5h'));
       expect(svg.match(/<rect/g)?.length).toBe(2); // bg + track
     });
 
     it('renders background + track + fill rect when percent > 0', () => {
-      const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 50, resetsAt: null }, '5h'));
+      const svg = decodeSvg(renderButtonImage({ kind: 'usage', percent: 50 }, '5h'));
       expect(svg.match(/<rect/g)?.length).toBe(3); // bg + track + fill
     });
   });
@@ -173,8 +172,8 @@ describe('renderButtonImage — nodata state', () => {
 
 describe('renderButtonImage — label', () => {
   it('includes the label in usage state', () => {
-    expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 50, resetsAt: null }, '5h'))).toContain('5h');
-    expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 50, resetsAt: null }, '7d'))).toContain('7d');
+    expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 50 }, '5h'))).toContain('5h');
+    expect(decodeSvg(renderButtonImage({ kind: 'usage', percent: 50 }, '7d'))).toContain('7d');
   });
 
   it('includes the label in loading state', () => {
